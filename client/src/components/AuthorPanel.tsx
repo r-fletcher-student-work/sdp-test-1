@@ -7,6 +7,9 @@ import { ErrorBanner } from './ErrorBanner';
 
 const PAGE_SIZE = 25;
 
+type SortKey = 'author' | 'commits' | 'modifications' | 'churn' | 'ownership';
+type SortDirection = 'asc' | 'desc';
+
 interface AuthorPanelProps {
   repoId: string;
   path: string;
@@ -19,6 +22,8 @@ export function AuthorPanel({ repoId, path, filter }: AuthorPanelProps) {
   const [selected, setSelected] = useState<string[]>([]);
   const [canonical, setCanonical] = useState('');
   const [page, setPage] = useState(0);
+  const [sortKey, setSortKey] = useState<SortKey>('churn');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   const query = useQuery({
     queryKey: ['author-metrics', repoId, path, filterKey],
@@ -57,13 +62,35 @@ export function AuthorPanel({ repoId, path, filter }: AuthorPanelProps) {
   const identities = query.data?.identities ?? [];
   const authors = query.data?.authors ?? [];
   const selectedSet = useMemo(() => new Set(selected), [selected]);
+  const sortedAuthors = useMemo(() => {
+    const direction = sortDirection === 'asc' ? 1 : -1;
+    return [...authors].sort((a, b) => {
+      if (sortKey === 'author') return direction * a.name.localeCompare(b.name);
+      if (sortKey === 'commits') return direction * (a.selectedCommitCount - b.selectedCommitCount);
+      if (sortKey === 'modifications') return direction * (a.modifications - b.modifications);
+      if (sortKey === 'ownership') return direction * (a.ownership - b.ownership);
+      return direction * (a.churn - b.churn);
+    });
+  }, [authors, sortDirection, sortKey]);
   const canMerge = selected.length >= 2 && canonical !== '' && selectedSet.has(canonical);
-  const totalPages = Math.max(1, Math.ceil(authors.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(sortedAuthors.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages - 1);
   const pageStart = safePage * PAGE_SIZE;
-  const pageAuthors = authors.slice(pageStart, pageStart + PAGE_SIZE);
-  const rangeStart = authors.length === 0 ? 0 : pageStart + 1;
+  const pageAuthors = sortedAuthors.slice(pageStart, pageStart + PAGE_SIZE);
+  const rangeStart = sortedAuthors.length === 0 ? 0 : pageStart + 1;
   const rangeEnd = pageStart + pageAuthors.length;
+
+  const changeSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDirection((current) => (current === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDirection(key === 'author' ? 'asc' : 'desc');
+    }
+    setPage(0);
+  };
+
+  const sortLabel = (key: SortKey) => (sortKey === key ? (sortDirection === 'asc' ? ' ↑' : ' ↓') : '');
 
   const toggle = (key: string) => {
     setSelected((current) => {
@@ -86,10 +113,10 @@ export function AuthorPanel({ repoId, path, filter }: AuthorPanelProps) {
             <h2 className="text-lg font-semibold">Authors</h2>
             <p className="text-sm text-slate-500">Churn, modifications, and ownership for this view.</p>
           </div>
-          {authors.length > PAGE_SIZE && (
+          {sortedAuthors.length > PAGE_SIZE && (
             <div className="flex items-center gap-2 text-sm">
               <span className="text-slate-500">
-                {fmtNumber(rangeStart)}–{fmtNumber(rangeEnd)} of {fmtNumber(authors.length)}
+                {fmtNumber(rangeStart)}–{fmtNumber(rangeEnd)} of {fmtNumber(sortedAuthors.length)}
               </span>
               <button
                 type="button"
@@ -125,11 +152,39 @@ export function AuthorPanel({ repoId, path, filter }: AuthorPanelProps) {
             <table className="w-full text-left text-sm">
               <thead className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500">
                 <tr>
-                  <th className="px-6 py-3 font-medium">Author</th>
-                  <th className="px-4 py-3 text-right font-medium">Commits</th>
-                  <th className="px-4 py-3 text-right font-medium">Mods</th>
-                  <th className="px-4 py-3 text-right font-medium">Churn</th>
-                  <th className="px-6 py-3 font-medium">Ownership</th>
+                  <SortableHeader
+                    label="Name"
+                    active={sortKey === 'author'}
+                    onClick={() => changeSort('author')}
+                    suffix={sortLabel('author')}
+                  />
+                  <SortableHeader
+                    label="Commits"
+                    align="right"
+                    active={sortKey === 'commits'}
+                    onClick={() => changeSort('commits')}
+                    suffix={sortLabel('commits')}
+                  />
+                  <SortableHeader
+                    label="Mods"
+                    align="right"
+                    active={sortKey === 'modifications'}
+                    onClick={() => changeSort('modifications')}
+                    suffix={sortLabel('modifications')}
+                  />
+                  <SortableHeader
+                    label="Churn"
+                    align="right"
+                    active={sortKey === 'churn'}
+                    onClick={() => changeSort('churn')}
+                    suffix={sortLabel('churn')}
+                  />
+                  <SortableHeader
+                    label="Ownership"
+                    active={sortKey === 'ownership'}
+                    onClick={() => changeSort('ownership')}
+                    suffix={sortLabel('ownership')}
+                  />
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -232,5 +287,31 @@ export function AuthorPanel({ repoId, path, filter }: AuthorPanelProps) {
         </>
       )}
     </section>
+  );
+}
+
+function SortableHeader({
+  label,
+  active,
+  suffix,
+  onClick,
+  align = 'left',
+}: {
+  label: string;
+  active: boolean;
+  suffix: string;
+  onClick(): void;
+  align?: 'left' | 'right';
+}) {
+  return (
+    <th className={`px-4 py-3 font-medium ${align === 'right' ? 'text-right' : 'text-left'}`}>
+      <button
+        type="button"
+        onClick={onClick}
+        className={`uppercase tracking-wide hover:text-slate-900 ${active ? 'text-slate-900' : ''}`}
+      >
+        {label}{suffix}
+      </button>
+    </th>
   );
 }
