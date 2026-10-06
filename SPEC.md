@@ -195,17 +195,17 @@ Rules: phases are built in order; **every commit must be working** (builds and r
 
 ### Phase 1 — Core foundation & repository metrics
 **Goal:** upload a zip → see correct repository-level metrics in a minimal dashboard.
-- [ ] 1. Scaffold monorepo: `client/` (Vite React-TS + Tailwind + Router + TanStack Query), `server/` (Express TS), root workspaces + build/dev/test scripts, `.gitignore`.
-- [ ] 2. Zip ingestion endpoint: save upload, extract with `adm-zip` to `server/data/repos/<id>/`, validate `.git` present, register repo; `GET /api/repos`.
-- [ ] 3. Git history extractor: streaming `git log --no-merges --numstat --find-renames=50%` parse into the `Commit[]` model (binary skip, rename resolution, deletion-as-removal, parent linkage).
-- [ ] 4. Metric engine v1: file metrics per commit; repository metrics = root aggregation; totals over the full history commit set.
-- [ ] 5. `GET /api/repos/:id/summary` endpoint.
-- [ ] 6. Dashboard v1: upload form, repo list, overview stat cards (commits, authors, total added/removed/growth/churn), churn/growth-over-time line chart.
-- [ ] 7. Vitest unit tests for parser and metric engine against a small fixture repo.
+- [x] 1. Scaffold monorepo: `client/` (Vite React-TS + Tailwind + Router + TanStack Query), `server/` (Express TS), root workspaces + build/dev/test scripts, `.gitignore`.
+- [x] 2. Zip ingestion endpoint: save upload, extract with `adm-zip` to `server/data/repos/<id>/`, validate `.git` present, register repo; `GET /api/repos`.
+- [x] 3. Git history extractor: streaming `git log --no-merges --numstat --find-renames=50%` parse into the `Commit[]` model (binary skip, rename resolution, deletion-as-removal, parent linkage).
+- [x] 4. Metric engine v1: file metrics per commit; repository metrics = root aggregation; totals over the full history commit set.
+- [x] 5. `GET /api/repos/:id/summary` endpoint.
+- [x] 6. Dashboard v1: upload form, repo list, overview stat cards (commits, authors, total added/removed/growth/churn), churn/growth-over-time line chart.
+- [x] 7. Vitest unit tests for parser and metric engine against a small fixture repo.
 
 **Phase checklist:**
-- [ ] Exit criteria met: `npm run build` green at root; upload → dashboard works end-to-end; tests pass
-- [ ] Pushed to `origin main`
+- [x] Exit criteria met: `npm run build` green at root; upload → dashboard works end-to-end; tests pass
+- [x] Pushed to `origin main`
 - [ ] Tested and verified by the user — required before Phase 2 starts (rule R-1, section 8)
 
 ### Phase 2 — Directory metrics & file drill-down

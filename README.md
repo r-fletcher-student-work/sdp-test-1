@@ -8,7 +8,7 @@ A web-app dashboard that ingests git repositories and measures per-author, per-f
 
 ## Status
 
-Under active development — **Phase 1 (core foundation & repository metrics) in progress** (see the progress tracker in SPEC.md section 6.0). This README is kept up to date with everything a user needs to know as functionality lands (rule R-2 in SPEC.md section 8).
+**Phase 1 (core foundation & repository metrics) complete** — awaiting user verification (see the progress tracker in SPEC.md section 6.0). Phase 2 (directory metrics & file drill-down) starts after verification. This README is kept up to date with everything a user needs to know as functionality lands (rule R-2 in SPEC.md section 8).
 
 ## Requirements
 
@@ -25,13 +25,28 @@ npm install
 npm run dev     # API server on http://localhost:4000 + web app on http://localhost:5173
 ```
 
-> Note: the dev scripts become available once the Phase 1 scaffold lands (imminent — see SPEC.md section 6).
+Then open http://localhost:5173 in your browser.
+
+Other commands:
+
+```bash
+npm run build   # typecheck + build server and client
+npm test        # Vitest suite (parser + metric engine)
+```
 
 ## Using the app
 
-1. **Ingest a repository** — upload a zip of a git repository that includes its `.git` folder (clone the repo locally, then compress the folder so the archive contains `.git`). Ingestion by remote URL arrives in Phase 5.
-2. **Open the repository** from the dashboard to see its metrics: totals (added / removed / growth / churn), commit / author / file counts, and cumulative growth & churn over time.
-3. Filters (author, path, time period, commit selection) arrive in Phase 3; author merging in Phase 4; multi-repo comparison in Phase 5.
+1. **Ingest a repository** — on the home page, upload a zip of a git repository that includes its `.git` folder. Cloning the repo locally and compressing the folder works well; archives without a `.git` inside (at the root or one folder down) are rejected with a clear error.
+2. **Open the repository** from the list to see its overview:
+   - Stat cards: commits, authors, files touched, added / removed lines, growth, churn (non-merge commits reachable from HEAD).
+   - Chart: cumulative growth and churn over time, oldest to newest.
+3. **Manage repositories** — remove a repository from the list (its extracted data is deleted from the server).
+
+### Known limits (by phase)
+
+- Only zip upload is available; remote URL ingestion arrives in Phase 5.
+- Metrics are repository-level only for now; per-directory and per-file views arrive in Phase 2.
+- Filters (author, path, time period, commit selection) arrive in Phase 3; author merging in Phase 4; multi-repo comparison in Phase 5.
 
 ## Metrics
 
