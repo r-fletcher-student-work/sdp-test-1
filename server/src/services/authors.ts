@@ -118,9 +118,12 @@ export function listAuthors(
   const sortedAuthors = [...authors.values()]
     .map((author) => ({ ...author, ownership: ratio(author.churn, totalObjectChurn) }))
     .sort((a, b) => b.churn - a.churn || b.commitCount - a.commitCount || a.name.localeCompare(b.name));
+  const visibleAuthors = filter.author
+    ? sortedAuthors.filter((author) => author.key === filter.author)
+    : sortedAuthors;
 
   return {
-    authors: sortedAuthors,
+    authors: visibleAuthors,
     identities: rawIdentities,
     merges,
   };

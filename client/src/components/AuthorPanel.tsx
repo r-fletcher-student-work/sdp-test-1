@@ -1,9 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
 import type { CommitSetFilter } from '../api/types';
 import { fmtNumber, fmtRate } from '../lib/format';
 import { ErrorBanner } from './ErrorBanner';
+
+const PAGE_SIZE = 25;
 
 interface AuthorPanelProps {
   repoId: string;
@@ -16,6 +18,7 @@ export function AuthorPanel({ repoId, path, filter }: AuthorPanelProps) {
   const filterKey = JSON.stringify(filter);
   const [selected, setSelected] = useState<string[]>([]);
   const [canonical, setCanonical] = useState('');
+  const [page, setPage] = useState(0);
 
   const query = useQuery({
     queryKey: ['author-metrics', repoId, path, filterKey],
@@ -49,9 +52,18 @@ export function AuthorPanel({ repoId, path, filter }: AuthorPanelProps) {
     },
   });
 
+  useEffect(() => setPage(0), [filterKey, path]);
+
   const identities = query.data?.identities ?? [];
+  const authors = query.data?.authors ?? [];
   const selectedSet = useMemo(() => new Set(selected), [selected]);
   const canMerge = selected.length >= 2 && canonical !== '' && selectedSet.has(canonical);
+  const totalPages = Math.max(1, Math.ceil(authors.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages - 1);
+  const pageStart = safePage * PAGE_SIZE;
+  const pageAuthors = authors.slice(pageStart, pageStart + PAGE_SIZE);
+  const rangeStart = authors.length === 0 ? 0 : pageStart + 1;
+  const rangeEnd = pageStart + pageAuthors.length;
 
   const toggle = (key: string) => {
     setSelected((current) => {
@@ -69,8 +81,35 @@ export function AuthorPanel({ repoId, path, filter }: AuthorPanelProps) {
   return (
     <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
       <div className="border-b border-slate-100 px-6 py-4">
-        <h2 className="text-lg font-semibold">Authors</h2>
-        <p className="text-sm text-slate-500">Churn, modifications, and ownership for this view.</p>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="text-lg font-semibold">Authors</h2>
+            <p className="text-sm text-slate-500">Churn, modifications, and ownership for this view.</p>
+          </div>
+          {authors.length > PAGE_SIZE && (
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-slate-500">
+                {fmtNumber(rangeStart)}–{fmtNumber(rangeEnd)} of {fmtNumber(authors.length)}
+              </span>
+              <button
+                type="button"
+                disabled={safePage === 0}
+                onClick={() => setPage((value) => Math.max(0, value - 1))}
+                className="rounded border border-slate-200 px-3 py-1.5 font-medium text-slate-700 enabled:hover:bg-slate-50 disabled:opacity-40"
+              >
+                Previous
+              </button>
+              <button
+                type="button"
+                disabled={safePage >= totalPages - 1}
+                onClick={() => setPage((value) => Math.min(totalPages - 1, value + 1))}
+                className="rounded border border-slate-200 px-3 py-1.5 font-medium text-slate-700 enabled:hover:bg-slate-50 disabled:opacity-40"
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {query.isLoading && <div className="h-40 animate-pulse rounded-b-lg bg-slate-100" />}
@@ -94,7 +133,7 @@ export function AuthorPanel({ repoId, path, filter }: AuthorPanelProps) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {query.data.authors.map((author) => (
+                {pageAuthors.map((author) => (
                   <tr key={author.key} className="hover:bg-slate-50">
                     <td className="px-6 py-3">
                       <div className="font-medium text-slate-900">{author.name}</div>

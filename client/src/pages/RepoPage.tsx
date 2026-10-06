@@ -33,6 +33,7 @@ export function RepoPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedPath = searchParams.get('path') ?? '';
   const activeTab = searchParams.get('tab') === 'commits' ? 'commits' : 'metrics';
+  const activeView = searchParams.get('view') === 'authors' ? 'authors' : 'files';
   const filter = parseFilter(searchParams);
   const filterKey = JSON.stringify(filter);
 
@@ -53,6 +54,12 @@ export function RepoPage() {
     updateParams((params) => {
       if (path === '') params.delete('path');
       else params.set('path', path);
+    });
+
+  const showView = (view: 'files' | 'authors') =>
+    updateParams((params) => {
+      if (view === 'authors') params.set('view', 'authors');
+      else params.delete('view');
     });
 
   const setFilter = (next: CommitSetFilter) =>
@@ -129,8 +136,6 @@ export function RepoPage() {
         onChange={setFilter}
       />
 
-      <AuthorPanel repoId={id} path={selectedPath} filter={filter} />
-
       {summaryQuery.isLoading && (
         <div className="animate-pulse space-y-4">
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
@@ -157,56 +162,80 @@ export function RepoPage() {
           onToggleCommit={toggleCommit}
         />
       ) : (
-        <div className="grid items-start gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
-          <aside className="lg:sticky lg:top-6">
-            {treeQuery.isLoading && (
-              <div className="h-64 animate-pulse rounded-lg bg-slate-200" aria-hidden="true" />
-            )}
-            {treeQuery.isError && (
-              <ErrorBanner
-                message={(treeQuery.error as Error).message}
-                onRetry={() => treeQuery.refetch()}
-              />
-            )}
-            {treeQuery.data && (
-              <FileTreeBrowser
-                node={treeQuery.data.tree}
-                selectedPath={selectedPath}
-                onSelect={selectPath}
-              />
-            )}
-          </aside>
+        <>
+          <div className="flex rounded-lg border border-slate-200 bg-white p-1 text-sm shadow-sm sm:w-fit">
+            {(['files', 'authors'] as const).map((view) => (
+              <button
+                key={view}
+                type="button"
+                onClick={() => showView(view)}
+                aria-current={activeView === view ? 'page' : undefined}
+                className={`rounded-md px-3 py-1.5 font-medium capitalize ${
+                  activeView === view
+                    ? 'bg-slate-900 text-white'
+                    : 'text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                {view}
+              </button>
+            ))}
+          </div>
 
-          <section className="min-w-0 space-y-6">
-            {selectedPath === '' ? (
-              summaryQuery.data && (
-                <>
-                  <StatCards summary={summaryQuery.data.summary} />
-                  <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-                    <h2 className="text-lg font-semibold">Growth &amp; churn over time</h2>
-                    <p className="text-sm text-slate-500">
-                      Cumulative across {filterActive ? 'the active commit set' : 'all commits'}.
-                      Large histories are sampled per point; values stay exact.
-                    </p>
-                    <div className="mt-4">
-                      <MetricsChart data={summaryQuery.data.summary.timeseries} />
-                    </div>
-                  </div>
-                </>
-              )
-            ) : (
-              summaryQuery.data && (
-                <PathMetricsView
-                  repoId={id}
-                  path={selectedPath}
-                  repoName={summaryQuery.data.repo.name}
-                  filter={filter}
-                  onSelectPath={selectPath}
-                />
-              )
-            )}
-          </section>
-        </div>
+          {activeView === 'authors' ? (
+            <AuthorPanel repoId={id} path={selectedPath} filter={filter} />
+          ) : (
+            <div className="grid items-start gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+              <aside className="lg:sticky lg:top-6">
+                {treeQuery.isLoading && (
+                  <div className="h-64 animate-pulse rounded-lg bg-slate-200" aria-hidden="true" />
+                )}
+                {treeQuery.isError && (
+                  <ErrorBanner
+                    message={(treeQuery.error as Error).message}
+                    onRetry={() => treeQuery.refetch()}
+                  />
+                )}
+                {treeQuery.data && (
+                  <FileTreeBrowser
+                    node={treeQuery.data.tree}
+                    selectedPath={selectedPath}
+                    onSelect={selectPath}
+                  />
+                )}
+              </aside>
+
+              <section className="min-w-0 space-y-6">
+                {selectedPath === '' ? (
+                  summaryQuery.data && (
+                    <>
+                      <StatCards summary={summaryQuery.data.summary} />
+                      <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+                        <h2 className="text-lg font-semibold">Growth &amp; churn over time</h2>
+                        <p className="text-sm text-slate-500">
+                          Cumulative across {filterActive ? 'the active commit set' : 'all commits'}.
+                          Large histories are sampled per point; values stay exact.
+                        </p>
+                        <div className="mt-4">
+                          <MetricsChart data={summaryQuery.data.summary.timeseries} />
+                        </div>
+                      </div>
+                    </>
+                  )
+                ) : (
+                  summaryQuery.data && (
+                    <PathMetricsView
+                      repoId={id}
+                      path={selectedPath}
+                      repoName={summaryQuery.data.repo.name}
+                      filter={filter}
+                      onSelectPath={selectPath}
+                    />
+                  )
+                )}
+              </section>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

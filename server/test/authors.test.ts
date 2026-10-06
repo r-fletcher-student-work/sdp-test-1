@@ -59,10 +59,9 @@ describe('listAuthors', () => {
     expect(bob.ownership).toBeCloseTo(7 / 17);
   });
 
-  it('respects the active commit set', () => {
+  it('hides other authors when the active filter selects one author', () => {
     const result = listAuthors(h, { author: 'Bob <bob@example.com>' }, '');
-    expect(result.authors).toHaveLength(2);
+    expect(result.authors).toHaveLength(1);
     expect(result.authors[0]).toMatchObject({ key: 'Bob <bob@example.com>', selectedCommitCount: 1, churn: 11, ownership: 1 });
-    expect(result.authors[1]).toMatchObject({ key: 'Alice <alice@example.com>', selectedCommitCount: 0, churn: 0, ownership: 0 });
   });
 });
