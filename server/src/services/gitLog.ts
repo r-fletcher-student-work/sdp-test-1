@@ -14,7 +14,7 @@ const LOG_FORMAT = '%x01%H%x1f%P%x1f%aN%x1f%aE%x1f%ct%x1f%s';
  * - renames (50% threshold) are attributed to the new path
  * - deletions appear as removed lines on the deleted path
  */
-export async function extractHistory(repoPath: string): Promise<CommitRecord[]> {
+export async function extractHistory(repoPath: string, revisionRange?: string): Promise<CommitRecord[]> {
   const args = [
     '-c',
     'core.quotepath=false',
@@ -28,6 +28,7 @@ export async function extractHistory(repoPath: string): Promise<CommitRecord[]> 
     '--date-order',
     `--pretty=format:${LOG_FORMAT}`,
   ];
+  if (revisionRange) args.push(revisionRange);
 
   const records: CommitRecord[] = [];
   let current: CommitRecord | null = null;

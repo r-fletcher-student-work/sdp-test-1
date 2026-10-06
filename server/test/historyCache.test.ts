@@ -38,6 +38,40 @@ describe('history cache', () => {
     expect(second.commits.map((commit) => commit.hash)).toEqual(first.commits.map((commit) => commit.hash));
   });
 
+  it('extends a persisted cache when HEAD advances', async () => {
+    const fixture = createFixtureRepo([
+      {
+        message: 'first commit',
+        author: { name: 'Alice', email: 'alice@example.com' },
+        date: '2024-01-01T12:00:00Z',
+        files: [{ path: 'one.txt', content: lines(1, 1) }],
+      },
+    ]);
+    const repoId = newId();
+    cleanupIds.push(repoId);
+    const repo = registerRepo(repoId, 'incremental-cache-fixture', fixture.path, { source: 'zip' });
+
+    const first = await getHistory(repo);
+    expect(first.commits).toHaveLength(1);
+    fs.writeFileSync(path.join(fixture.path, 'two.txt'), lines(2, 2));
+    execFileSync('git', ['-C', fixture.path, 'add', '-A']);
+    execFileSync('git', ['-C', fixture.path, '-c', 'commit.gpgsign=false', 'commit', '-m', 'second commit'], {
+      env: {
+        ...process.env,
+        GIT_AUTHOR_NAME: 'Bob',
+        GIT_AUTHOR_EMAIL: 'bob@example.com',
+        GIT_COMMITTER_NAME: 'Bob',
+        GIT_COMMITTER_EMAIL: 'bob@example.com',
+        GIT_AUTHOR_DATE: '2024-01-02T12:00:00Z',
+        GIT_COMMITTER_DATE: '2024-01-02T12:00:00Z',
+      },
+    });
+
+    clearHistoryCacheForTests();
+    const second = await getHistory(repo);
+    expect(second.commits.map((commit) => commit.subject)).toEqual(['first commit', 'second commit']);
+  });
+
   it('invalidates merged history when the merge map changes', async () => {
     const fixture = createFixtureRepo([
       {

@@ -60,8 +60,17 @@ export async function getHistory(repo: RepoMeta): Promise<HistoryData> {
   }
 
   const persisted = loadPersistedHistory(repo.id, head);
-  const commits = persisted ?? await extractHistory(repo.path);
-  if (!persisted) savePersistedHistory(repo.id, head, commits);
+  let commits = persisted;
+  if (!commits) {
+    const base = await findIncrementalBase(repo.id, repo.path, head);
+    if (base) {
+      const newCommits = await extractHistory(repo.path, `${base.head}..${head}`);
+      commits = [...base.commits, ...newCommits];
+    } else {
+      commits = await extractHistory(repo.path);
+    }
+    savePersistedHistory(repo.id, head, commits);
+  }
 
   const data = buildHistoryData(head, commits);
   cache.set(repo.id, { head, data });
@@ -107,14 +116,46 @@ function cacheFile(repoId: string, head: string): string {
 }
 
 function loadPersistedHistory(repoId: string, head: string): CommitRecord[] | null {
-  const file = cacheFile(repoId, head);
+  return loadPersistedCacheFile(cacheFile(repoId, head), repoId, head)?.commits ?? null;
+}
+
+function loadPersistedCacheFile(file: string, repoId: string, head?: string): PersistedHistory | null {
   if (!fs.existsSync(file)) return null;
   try {
     const parsed = JSON.parse(fs.readFileSync(file, 'utf8')) as PersistedHistory;
-    if (parsed.version !== CACHE_VERSION || parsed.repoId !== repoId || parsed.head !== head) return null;
-    return Array.isArray(parsed.commits) ? parsed.commits : null;
+    if (parsed.version !== CACHE_VERSION || parsed.repoId !== repoId) return null;
+    if (head && parsed.head !== head) return null;
+    return Array.isArray(parsed.commits) ? parsed : null;
   } catch {
     return null;
+  }
+}
+
+async function findIncrementalBase(
+  repoId: string,
+  repoPath: string,
+  head: string,
+): Promise<PersistedHistory | null> {
+  ensureDataDirs();
+  const candidates = fs
+    .readdirSync(dirs.cacheDir)
+    .filter((file) => file.startsWith(`${repoId}-`) && file.endsWith('.json'));
+  let best: PersistedHistory | null = null;
+  for (const file of candidates) {
+    const parsed = loadPersistedCacheFile(path.join(dirs.cacheDir, file), repoId);
+    if (!parsed || parsed.head === head) continue;
+    if (!(await isAncestor(repoPath, parsed.head, head))) continue;
+    if (!best || parsed.commits.length > best.commits.length) best = parsed;
+  }
+  return best;
+}
+
+async function isAncestor(repoPath: string, ancestor: string, descendant: string): Promise<boolean> {
+  try {
+    await exec('git', ['-C', repoPath, 'merge-base', '--is-ancestor', ancestor, descendant]);
+    return true;
+  } catch {
+    return false;
   }
 }
 
