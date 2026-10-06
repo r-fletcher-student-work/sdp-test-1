@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
-import type { CommitSetFilter } from '../api/types';
+import type { AuthorIdentity, CommitSetFilter } from '../api/types';
 import { fmtNumber, fmtRate } from '../lib/format';
 import { ErrorBanner } from './ErrorBanner';
 import { useToast } from './Toast';
@@ -10,6 +10,13 @@ const PAGE_SIZE = 25;
 
 type SortKey = 'author' | 'commits' | 'modifications' | 'churn' | 'ownership';
 type SortDirection = 'asc' | 'desc';
+
+interface IdentityGroup {
+  key: string;
+  label: string;
+  keys: string[];
+  aliases: string[];
+}
 
 interface AuthorPanelProps {
   repoId: string;
@@ -68,6 +75,10 @@ export function AuthorPanel({ repoId, path, filter }: AuthorPanelProps) {
   const identities = query.data?.identities ?? [];
   const authors = query.data?.authors ?? [];
   const selectedSet = useMemo(() => new Set(selected), [selected]);
+  const identityGroups = useMemo(
+    () => buildIdentityGroups(identities, query.data?.merges ?? []),
+    [identities, query.data?.merges],
+  );
   const sortedAuthors = useMemo(() => {
     const direction = sortDirection === 'asc' ? 1 : -1;
     return [...authors].sort((a, b) => {
@@ -98,15 +109,15 @@ export function AuthorPanel({ repoId, path, filter }: AuthorPanelProps) {
 
   const sortLabel = (key: SortKey) => (sortKey === key ? (sortDirection === 'asc' ? ' ↑' : ' ↓') : '');
 
-  const toggle = (key: string) => {
+  const toggleGroup = (group: IdentityGroup) => {
     setSelected((current) => {
-      if (current.includes(key)) {
-        const next = current.filter((item) => item !== key);
-        if (canonical === key) setCanonical(next[0] ?? '');
-        return next;
-      }
-      const next = [...current, key];
-      if (!canonical) setCanonical(key);
+      const groupSet = new Set(group.keys);
+      const hasEveryKey = group.keys.every((key) => current.includes(key));
+      const next = hasEveryKey
+        ? current.filter((key) => !groupSet.has(key))
+        : [...current, ...group.keys.filter((key) => !current.includes(key))];
+      if (canonical && !next.includes(canonical)) setCanonical(next[0] ?? '');
+      if (!canonical && next.length > 0) setCanonical(next[0]);
       return next;
     });
   };
@@ -268,15 +279,22 @@ export function AuthorPanel({ repoId, path, filter }: AuthorPanelProps) {
             </div>
 
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {identities.map((identity) => (
-                <label key={identity.key} className="flex items-center gap-2 text-sm text-slate-700">
+              {identityGroups.map((group) => (
+                <label key={group.key} className="flex items-start gap-2 text-sm text-slate-700">
                   <input
                     type="checkbox"
-                    checked={selectedSet.has(identity.key)}
-                    onChange={() => toggle(identity.key)}
-                    className="h-4 w-4 rounded border-slate-300 text-blue-600"
+                    checked={group.keys.every((key) => selectedSet.has(key))}
+                    onChange={() => toggleGroup(group)}
+                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600"
                   />
-                  <span className="truncate" title={identity.key}>{identity.key}</span>
+                  <span className="min-w-0">
+                    <span className="block truncate" title={group.label}>{group.label}</span>
+                    {group.aliases.length > 0 && (
+                      <span className="block truncate text-xs text-slate-400" title={group.aliases.join(', ')}>
+                        Includes {group.aliases.length} merged identit{group.aliases.length === 1 ? 'y' : 'ies'}
+                      </span>
+                    )}
+                  </span>
                 </label>
               ))}
             </div>
@@ -294,6 +312,31 @@ export function AuthorPanel({ repoId, path, filter }: AuthorPanelProps) {
       )}
     </section>
   );
+}
+
+function buildIdentityGroups(
+  identities: AuthorIdentity[],
+  merges: Array<{ canonical: AuthorIdentity; aliases: AuthorIdentity[] }>,
+): IdentityGroup[] {
+  const mergedKeys = new Set<string>();
+  const groups: IdentityGroup[] = merges.map((merge) => {
+    const aliases = merge.aliases.map((alias) => alias.key);
+    const keys = [merge.canonical.key, ...aliases];
+    for (const key of keys) mergedKeys.add(key);
+    return {
+      key: merge.canonical.key,
+      label: merge.canonical.key,
+      keys,
+      aliases,
+    };
+  });
+
+  for (const identity of identities) {
+    if (!mergedKeys.has(identity.key)) {
+      groups.push({ key: identity.key, label: identity.key, keys: [identity.key], aliases: [] });
+    }
+  }
+  return groups.sort((a, b) => a.label.localeCompare(b.label));
 }
 
 function SortableHeader({

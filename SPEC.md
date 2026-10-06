@@ -173,10 +173,10 @@ l-(h,d) = Σ l-(h,f) + Σ l-(h,d′)
 - [x] FR-14 Author view: author modifications `n(H,o,a)`, author churn `λ(H,o,a)`, ownership `ω(H,o,a)` per file/directory.
 
 **Visualization & UX**
-- [ ] FR-15 Charts: growth/churn trend lines, top-volatile/hottest files ranking, directory drill-down (e.g., treemap/heatmap where useful).
-- [ ] FR-16 Error handling: invalid zip, missing `.git`, failed clone, parse errors — all surfaced with actionable messages (no silent failures).
-- [ ] FR-17 Loading/progress states for upload, clone, and analysis of large repos.
-- [ ] FR-18 Clear navigation: repo → directory → file drill-down; fast on ~100k-commit repositories.
+- [x] FR-15 Charts: growth/churn trend lines, top-volatile/hottest files ranking, directory drill-down (e.g., treemap/heatmap where useful).
+- [x] FR-16 Error handling: invalid zip, missing `.git`, failed clone, parse errors — all surfaced with actionable messages (no silent failures).
+- [x] FR-17 Loading/progress states for upload, clone, and analysis of large repos.
+- [x] FR-18 Clear navigation: repo → directory → file drill-down; fast on ~100k-commit repositories.
 
 ---
 
@@ -265,15 +265,17 @@ Rules: phases are built in order; **every commit must be working** (builds and r
 
 ### Phase 6 — Performance & polish
 **Goal:** fast on ~100k-commit repos; polished, inspired UX.
-- [ ] 1. Analysis cache per repo keyed by `HEAD` hash + merge-map version; incremental log parsing (only new commits).
-- [ ] 2. Streaming parse with batched aggregation; constant-memory pass where feasible; no redundant git invocations per view.
-- [ ] 3. Visualization upgrade: trend lines everywhere, directory churn treemap/heatmap, top-modified files, author ownership.
-- [ ] 4. QoL: toasts, skeletons/empty states, helpful errors, README with run instructions.
+- [x] 1. Analysis cache per repo keyed by `HEAD` hash + merge-map version; incremental log parsing (only new commits).
+- [x] 2. Streaming parse with batched aggregation; constant-memory pass where feasible; no redundant git invocations per view.
+- [x] 3. Visualization upgrade: trend lines everywhere, directory churn treemap/heatmap, top-modified files, author ownership.
+- [x] 4. QoL: toasts, skeletons/empty states, helpful errors, README with run instructions.
 
 **Phase checklist:**
-- [ ] Exit criteria met: Git repo (~100k commits) analyzes and browses without long freezes; all FRs checked
+- [x] Exit criteria met: Git repo (~100k commits) analyzes and browses without long freezes; all FRs checked
 - [ ] Tested and verified by the user — final gate; required before the phase is pushed (rules R-1 and R-3, section 8)
 - [ ] Pushed to `origin main`
+
+> Implementation notes: `git log` is parsed from stdout as a stream, raw parsed histories are persisted under `server/data/cache/` by repo and `HEAD`, and cache misses can extend an ancestor cache with only new commits. Merged history is cached separately by `HEAD` plus author-merge file version. The client adds empty states, toasts, a per-commit churn trend, directory heatmap tiles, and top-modified child rankings without adding frontend dependencies.
 
 ### 6.7 Rubric traceability
 
