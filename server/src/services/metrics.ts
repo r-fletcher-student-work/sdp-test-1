@@ -24,8 +24,31 @@ export interface RepoSummary {
   firstCommitDate: number | null;
   lastCommitDate: number | null;
   totals: Totals;
-  /** one point per commit, chronological */
+  /**
+   * Cumulative series for the chart, chronological. Sampled to at most
+   * CHART_MAX_POINTS points on very large histories — cumulative values stay
+   * exact at every sampled point. The full per-commit list is served by the
+   * commits endpoint from Phase 2.
+   */
   timeseries: CommitPoint[];
+}
+
+/** Chart payload cap — keeps the browser chart responsive on ~100k-commit repos. */
+export const CHART_MAX_POINTS = 800;
+
+/**
+ * Even sampling that keeps the first and last points. When downsampling, the
+ * index step is > 1 so sampled indices are strictly increasing: every returned
+ * point is a real commit whose cumulative values are exact.
+ */
+function downsampleSeries(points: CommitPoint[], max: number): CommitPoint[] {
+  if (points.length <= max) return points;
+  const sampled: CommitPoint[] = new Array(max);
+  const step = (points.length - 1) / (max - 1);
+  for (let i = 0; i < max; i++) {
+    sampled[i] = points[Math.round(i * step)];
+  }
+  return sampled;
 }
 
 /**
@@ -79,6 +102,6 @@ export function computeRepoSummary(commits: CommitRecord[]): RepoSummary {
     firstCommitDate: commits.length > 0 ? commits[0].committerDate : null,
     lastCommitDate: commits.length > 0 ? commits[commits.length - 1].committerDate : null,
     totals,
-    timeseries,
+    timeseries: downsampleSeries(timeseries, CHART_MAX_POINTS),
   };
 }

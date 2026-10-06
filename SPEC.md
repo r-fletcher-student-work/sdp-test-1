@@ -202,6 +202,7 @@ Rules: phases are built in order; **every commit must be working** (builds and r
 - [x] 5. `GET /api/repos/:id/summary` endpoint.
 - [x] 6. Dashboard v1: upload form, repo list, overview stat cards (commits, authors, total added/removed/growth/churn), churn/growth-over-time line chart.
 - [x] 7. Vitest unit tests for parser and metric engine against a small fixture repo.
+- [x] 8. Large-repo chart guard (added during user verification): summary timeseries sampled server-side to ≤ 800 points — first/last points kept, cumulative values exact at every plotted point — so Git/Redis-scale histories render the growth/churn chart. The full per-commit series moves behind the commits endpoint in Phase 2; deep optimization (persistent incremental cache, streaming parse, progress states) stays in Phase 6.
 
 **Phase checklist:**
 - [x] Exit criteria met: `npm run build` green at root; upload → dashboard works end-to-end; tests pass

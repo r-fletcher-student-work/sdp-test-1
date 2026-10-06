@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeRepoSummary } from '../src/services/metrics.js';
+import { CHART_MAX_POINTS, computeRepoSummary } from '../src/services/metrics.js';
 import type { CommitRecord } from '../src/types.js';
 
 function commit(partial: Partial<CommitRecord> & { hash: string }): CommitRecord {
@@ -79,6 +79,36 @@ describe('computeRepoSummary', () => {
     expect(summary.fileCount).toBe(2);
     expect(summary.firstCommitDate).toBe(100);
     expect(summary.lastCommitDate).toBe(300);
+  });
+
+  it('samples the chart timeseries on very large histories, keeping endpoints exact', () => {
+    const total = 2000;
+    const commits: CommitRecord[] = [];
+    for (let i = 0; i < total; i++) {
+      commits.push(
+        commit({
+          hash: `c${i}`,
+          parent: i === 0 ? null : `c${i - 1}`,
+          committerDate: 1000 + i,
+          changes: [{ path: `f${i}.txt`, added: 1, removed: 0 }],
+        }),
+      );
+    }
+    const summary = computeRepoSummary(commits);
+
+    expect(summary.commitCount).toBe(total);
+    expect(summary.totals).toEqual({ added: total, removed: 0, growth: total, churn: total });
+    expect(summary.timeseries.length).toBe(CHART_MAX_POINTS);
+    expect(summary.timeseries[0]).toMatchObject({ hash: 'c0', cumAdded: 1, cumChurn: 1 });
+    expect(summary.timeseries[summary.timeseries.length - 1]).toMatchObject({
+      hash: `c${total - 1}`,
+      cumAdded: total,
+      cumChurn: total,
+    });
+    // Sampled points are real commits in chronological order.
+    for (let i = 1; i < summary.timeseries.length; i++) {
+      expect(summary.timeseries[i].date).toBeGreaterThan(summary.timeseries[i - 1].date);
+    }
   });
 
   it('returns an empty summary for an empty history', () => {

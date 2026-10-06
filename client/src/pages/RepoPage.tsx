@@ -45,7 +45,10 @@ export function RepoPage() {
           <StatCards summary={summaryQuery.data.summary} />
           <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
             <h2 className="text-lg font-semibold">Growth &amp; churn over time</h2>
-            <p className="text-sm text-slate-500">Cumulative across all commits, oldest to newest.</p>
+            <p className="text-sm text-slate-500">
+              Cumulative across all commits, oldest to newest. Very large histories are sampled
+              per point to keep the chart responsive — every value stays exact.
+            </p>
             <div className="mt-4">
               <MetricsChart data={summaryQuery.data.summary.timeseries} />
             </div>
