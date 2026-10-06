@@ -12,6 +12,14 @@ import type { CommitPoint } from '../api/types';
 import { fmtDate, fmtNumber } from '../lib/format';
 
 export function MetricsChart({ data }: { data: CommitPoint[] }) {
+  if (data.length === 0) {
+    return (
+      <div className="flex h-80 w-full items-center justify-center rounded-lg bg-slate-50 text-sm text-slate-500">
+        No trend data for this view.
+      </div>
+    );
+  }
+
   return (
     <div className="h-80 w-full">
       <ResponsiveContainer width="100%" height="100%">
@@ -51,6 +59,14 @@ export function MetricsChart({ data }: { data: CommitPoint[] }) {
             name="Cumulative churn"
             stroke="#2563eb"
             strokeWidth={2}
+            dot={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="churn"
+            name="Commit churn"
+            stroke="#93c5fd"
+            strokeWidth={1}
             dot={false}
           />
         </LineChart>

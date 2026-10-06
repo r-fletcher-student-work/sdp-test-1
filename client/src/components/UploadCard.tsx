@@ -1,15 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../api/client';
+import { useToast } from './Toast';
 
 export function UploadCard() {
   const [mode, setMode] = useState<'zip' | 'url'>('zip');
   const [file, setFile] = useState<File | null>(null);
   const [url, setUrl] = useState('');
   const [cloneJobId, setCloneJobId] = useState<string | null>(null);
+  const [reportedCloneJobId, setReportedCloneJobId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
+  const { showToast } = useToast();
 
   const upload = useMutation({
     mutationFn: (f: File) => api.uploadRepo(f),
@@ -17,18 +20,27 @@ export function UploadCard() {
       setFile(null);
       setError(null);
       if (inputRef.current) inputRef.current.value = '';
+      showToast('Repository uploaded.', 'success');
       void queryClient.invalidateQueries({ queryKey: ['repos'] });
     },
-    onError: (err: Error) => setError(err.message),
+    onError: (err: Error) => {
+      setError(err.message);
+      showToast('Upload failed.', 'error');
+    },
   });
 
   const clone = useMutation({
     mutationFn: (repoUrl: string) => api.cloneRepo(repoUrl),
     onSuccess: (job) => {
       setCloneJobId(job.id);
+      setReportedCloneJobId(null);
       setError(null);
+      showToast('Clone started.', 'info');
     },
-    onError: (err: Error) => setError(err.message),
+    onError: (err: Error) => {
+      setError(err.message);
+      showToast('Clone failed.', 'error');
+    },
   });
 
   const cloneStatus = useQuery({
@@ -44,12 +56,19 @@ export function UploadCard() {
   useEffect(() => {
     const job = cloneStatus.data;
     if (!job) return;
+    if (reportedCloneJobId === job.id) return;
     if (job.status === 'complete') {
+      setReportedCloneJobId(job.id);
       setUrl('');
+      showToast('Clone complete.', 'success');
       void queryClient.invalidateQueries({ queryKey: ['repos'] });
     }
-    if (job.status === 'failed') setError(job.error ?? job.message);
-  }, [cloneStatus.data, queryClient]);
+    if (job.status === 'failed') {
+      setReportedCloneJobId(job.id);
+      setError(job.error ?? job.message);
+      showToast('Clone failed.', 'error');
+    }
+  }, [cloneStatus.data, queryClient, reportedCloneJobId, showToast]);
 
   const clonePending = clone.isPending || ['queued', 'running'].includes(cloneStatus.data?.status ?? '');
 

@@ -88,7 +88,10 @@ export function PathMetricsView({ repoId, path, repoName, filter, onSelectPath }
       </section>
 
       {metrics.type === 'dir' ? (
-        <ChildrenTable items={metrics.children} onSelectPath={onSelectPath} />
+        <>
+          <DirectoryInsights items={metrics.children} onSelectPath={onSelectPath} />
+          <ChildrenTable items={metrics.children} onSelectPath={onSelectPath} />
+        </>
       ) : (
         <FileCommitDeltas query={commitsQuery} />
       )}
@@ -183,6 +186,70 @@ function PathStats({ metrics }: { metrics: PathMetrics }) {
   );
 }
 
+function DirectoryInsights({
+  items,
+  onSelectPath,
+}: {
+  items: ChildMetric[];
+  onSelectPath(path: string): void;
+}) {
+  const ranked = [...items].sort((a, b) => b.churn - a.churn).slice(0, 10);
+  const topModified = [...items].sort((a, b) => b.modifications - a.modifications).slice(0, 5);
+  const maxChurn = Math.max(...ranked.map((item) => item.churn), 1);
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(280px,1fr)]">
+      <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-semibold">Directory heatmap</h2>
+        <p className="text-sm text-slate-500">Largest children by churn.</p>
+        {ranked.length === 0 ? (
+          <p className="mt-4 text-sm text-slate-500">No child paths match this view.</p>
+        ) : (
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {ranked.map((item) => {
+              const intensity = Math.max(12, Math.round((item.churn / maxChurn) * 100));
+              return (
+                <button
+                  key={item.path}
+                  type="button"
+                  onClick={() => onSelectPath(item.path)}
+                  className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-left hover:border-blue-300"
+                  style={{ opacity: intensity / 100 }}
+                >
+                  <div className="truncate text-sm font-semibold text-slate-900" title={item.name}>{item.name}</div>
+                  <div className="mt-1 text-xs text-slate-600">{fmtNumber(item.churn)} churn</div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-semibold">Top modified</h2>
+        <p className="text-sm text-slate-500">Most frequently touched children.</p>
+        <div className="mt-4 space-y-3">
+          {topModified.length === 0 ? (
+            <p className="text-sm text-slate-500">No child paths match this view.</p>
+          ) : (
+            topModified.map((item) => (
+              <button
+                key={item.path}
+                type="button"
+                onClick={() => onSelectPath(item.path)}
+                className="flex w-full items-center justify-between gap-3 rounded-md border border-slate-100 px-3 py-2 text-left hover:bg-slate-50"
+              >
+                <span className="truncate text-sm font-medium text-slate-800" title={item.name}>{item.name}</span>
+                <span className="text-sm text-slate-500">{fmtNumber(item.modifications)}</span>
+              </button>
+            ))
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function ChildrenTable({
   items,
   onSelectPath,
@@ -194,10 +261,7 @@ function ChildrenTable({
     <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
       <div className="border-b border-slate-100 px-6 py-4">
         <h2 className="text-lg font-semibold">Immediate children</h2>
-        <p className="text-sm text-slate-500">
-          Directories and files inside this directory, with their recursive totals. Click a row to
-          drill down.
-        </p>
+        <p className="text-sm text-slate-500">Direct children with recursive totals.</p>
       </div>
       {items.length === 0 ? (
         <p className="px-6 py-6 text-sm text-slate-500">Nothing ever changed inside this path.</p>
@@ -287,6 +351,13 @@ function FileCommitDeltas({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
+            {commits.length === 0 && (
+              <tr>
+                <td colSpan={6} className="px-6 py-6 text-center text-slate-500">
+                  No commit deltas match this view.
+                </td>
+              </tr>
+            )}
             {commits.map((commit) => (
               <tr key={commit.hash} className="hover:bg-slate-50">
                 <td className="px-6 py-3 font-mono text-xs text-slate-500">

@@ -2,11 +2,13 @@ import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/rea
 import { Link } from 'react-router-dom';
 import { api, type SummaryResponse } from '../api/client';
 import { ErrorBanner } from '../components/ErrorBanner';
+import { useToast } from '../components/Toast';
 import { UploadCard } from '../components/UploadCard';
 import { fmtNumber } from '../lib/format';
 
 export function HomePage() {
   const queryClient = useQueryClient();
+  const { showToast } = useToast();
   const reposQuery = useQuery({ queryKey: ['repos'], queryFn: api.listRepos });
   const repos = reposQuery.data ?? [];
   const summaryQueries = useQueries({
@@ -19,7 +21,11 @@ export function HomePage() {
   });
   const deleteRepo = useMutation({
     mutationFn: api.deleteRepo,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['repos'] }),
+    onSuccess: () => {
+      showToast('Repository deleted.', 'success');
+      void queryClient.invalidateQueries({ queryKey: ['repos'] });
+    },
+    onError: (err: Error) => showToast(err.message, 'error'),
   });
 
   return (

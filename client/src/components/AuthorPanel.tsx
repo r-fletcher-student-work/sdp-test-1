@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import type { CommitSetFilter } from '../api/types';
 import { fmtNumber, fmtRate } from '../lib/format';
 import { ErrorBanner } from './ErrorBanner';
+import { useToast } from './Toast';
 
 const PAGE_SIZE = 25;
 
@@ -18,6 +19,7 @@ interface AuthorPanelProps {
 
 export function AuthorPanel({ repoId, path, filter }: AuthorPanelProps) {
   const queryClient = useQueryClient();
+  const { showToast } = useToast();
   const filterKey = JSON.stringify(filter);
   const [selected, setSelected] = useState<string[]>([]);
   const [canonical, setCanonical] = useState('');
@@ -41,7 +43,9 @@ export function AuthorPanel({ repoId, path, filter }: AuthorPanelProps) {
       void queryClient.invalidateQueries({ queryKey: ['summary', repoId] });
       void queryClient.invalidateQueries({ queryKey: ['metrics', repoId] });
       void queryClient.invalidateQueries({ queryKey: ['commits', repoId] });
+      showToast('Authors merged.', 'success');
     },
+    onError: (err: Error) => showToast(err.message, 'error'),
   });
 
   const clearMutation = useMutation({
@@ -54,7 +58,9 @@ export function AuthorPanel({ repoId, path, filter }: AuthorPanelProps) {
       void queryClient.invalidateQueries({ queryKey: ['summary', repoId] });
       void queryClient.invalidateQueries({ queryKey: ['metrics', repoId] });
       void queryClient.invalidateQueries({ queryKey: ['commits', repoId] });
+      showToast('Author merges cleared.', 'success');
     },
+    onError: (err: Error) => showToast(err.message, 'error'),
   });
 
   useEffect(() => setPage(0), [filterKey, path]);
