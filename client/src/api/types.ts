@@ -53,13 +53,31 @@ export interface CommitSetFilter {
   author?: string;
 }
 
-export interface AuthorInfo {
+export interface AuthorIdentity {
   name: string;
   email: string;
   /** canonical identity key 'Name <email>' used by the author filter */
   key: string;
-  /** non-merge commits in the parsed history */
+}
+
+export interface AuthorMerge {
+  canonical: AuthorIdentity;
+  aliases: AuthorIdentity[];
+}
+
+export interface AuthorInfo extends AuthorIdentity {
+  /** non-merge commits by this canonical author across the whole history */
   commitCount: number;
+  /** raw/mailmapped identities grouped into this author */
+  aliases: AuthorIdentity[];
+  /** commits by this author in the active set H */
+  selectedCommitCount: number;
+  /** author modifications n(H,o,a) */
+  modifications: number;
+  /** author churn λ(H,o,a) */
+  churn: number;
+  /** author ownership ω(H,o,a) */
+  ownership: number;
 }
 
 export interface TreeNode {

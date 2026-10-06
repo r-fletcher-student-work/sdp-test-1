@@ -1,5 +1,7 @@
 import type {
+  AuthorIdentity,
   AuthorInfo,
+  AuthorMerge,
   CommitListItem,
   CommitSetFilter,
   PathMetrics,
@@ -47,6 +49,8 @@ export interface CommitsResponse {
 export interface AuthorsResponse {
   repo: RepoPublic;
   authors: AuthorInfo[];
+  identities: AuthorIdentity[];
+  merges: AuthorMerge[];
 }
 
 /** URLSearchParams for a commit-set filter (empty when nothing is set). */
@@ -88,7 +92,25 @@ export const api = {
 
   getTree: (id: string) => request<TreeResponse>(`/repos/${id}/tree`),
 
-  getAuthors: (id: string) => request<AuthorsResponse>(`/repos/${id}/authors`),
+  getAuthors: (id: string, params: { path?: string; filter?: CommitSetFilter } = {}) => {
+    const extra = new URLSearchParams();
+    if (params.path) extra.set('path', params.path);
+    return request<AuthorsResponse>(repoUrl(id, 'authors', params.filter, extra));
+  },
+
+  mergeAuthors: (id: string, canonical: string, aliases: string[]) =>
+    request<AuthorsResponse>(`/repos/${id}/authors/merge`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ canonical, aliases }),
+    }),
+
+  clearAuthorMerges: (id: string) =>
+    request<AuthorsResponse>(`/repos/${id}/authors/merge`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clear: true }),
+    }),
 
   getMetrics: (id: string, path: string, filter: CommitSetFilter = {}) =>
     request<MetricsResponse>(repoUrl(id, 'metrics', filter, new URLSearchParams({ path }))),

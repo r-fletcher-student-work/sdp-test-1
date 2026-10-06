@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 import type { CommitSetFilter } from '../api/types';
+import { AuthorPanel } from '../components/AuthorPanel';
 import { CommitsTable } from '../components/CommitsTable';
 import { ErrorBanner } from '../components/ErrorBanner';
 import { FileTreeBrowser } from '../components/FileTreeBrowser';
@@ -127,6 +128,8 @@ export function RepoPage() {
         authors={authorsQuery.data?.authors}
         onChange={setFilter}
       />
+
+      <AuthorPanel repoId={id} path={selectedPath} filter={filter} />
 
       {summaryQuery.isLoading && (
         <div className="animate-pulse space-y-4">
