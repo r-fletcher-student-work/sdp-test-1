@@ -152,7 +152,7 @@ l-(h,d) = Σ l-(h,f) + Σ l-(h,d′)
 
 **Ingestion**
 - [x] FR-1 Upload a zip containing the repository **including `.git`**; validate and reject invalid archives with a clear error.
-- [ ] FR-2 Ingest via remote URL using a full (deep) clone; surface progress and clone failures clearly.
+- [x] FR-2 Ingest via remote URL using a full (deep) clone; surface progress and clone failures clearly.
 - [x] FR-3 Multiple repository support: add, list, remove, and switch between repos.
 
 **Filters (composable, apply to all metric views)**
@@ -190,7 +190,7 @@ Rules: phases are built in order; **every commit must be working** (builds and r
 - [x] Phase 2 — Directory metrics & file drill-down — built, user-verified, pushed
 - [x] Phase 3 — Filtering & commit sets — built, user-verified, pushed
 - [x] Phase 4 — Authors & merging — built, user-verified, pushed
-- [ ] Phase 5 — Remote URL ingestion & multi-repo — built, user-verified, pushed
+- [x] Phase 5 — Remote URL ingestion & multi-repo — built, user-verified, pushed
 - [ ] Phase 6 — Performance & polish — built, user-verified, pushed
 
 ### Phase 1 — Core foundation & repository metrics
@@ -252,14 +252,16 @@ Rules: phases are built in order; **every commit must be working** (builds and r
 
 ### Phase 5 — Remote URL ingestion & multi-repo
 **Goal:** both ingestion forms and multi-repo workflows complete.
-- [ ] 1. `POST /api/repos/clone { url }`: full `git clone`, progress feedback, timeout and error handling.
-- [ ] 2. Repo manager UI: add (zip or URL), remove, switch.
-- [ ] 3. Multi-repo dashboard: headline metrics compared across repos.
+- [x] 1. `POST /api/repos/clone { url }`: full `git clone`, progress feedback, timeout and error handling.
+- [x] 2. Repo manager UI: add (zip or URL), remove, switch.
+- [x] 3. Multi-repo dashboard: headline metrics compared across repos.
 
 **Phase checklist:**
-- [ ] Exit criteria met: can clone cJSON/Redis/Git URLs, switch between repos, compare
-- [ ] Tested and verified by the user — required before the phase is pushed (rules R-1 and R-3, section 8)
-- [ ] Pushed to `origin main`
+- [x] Exit criteria met: can clone cJSON/Redis/Git URLs, switch between repos, compare
+- [x] Tested and verified by the user — required before the phase is pushed (rules R-1 and R-3, section 8)
+- [x] Pushed to `origin main`
+
+> Implementation notes: remote clone ingestion uses `POST /api/repos/clone` to start an in-process `git clone --progress` job, plus `GET /api/repos/clone/:jobId` for polling status. Clone URLs are validated before invoking git, prompts are disabled, jobs clean partial directories on failure, and cloned repos are registered with source metadata. The home page supports zip/URL add modes, repository removal/switching, and a concise comparison table for multiple repos.
 
 ### Phase 6 — Performance & polish
 **Goal:** fast on ~100k-commit repos; polished, inspired UX.

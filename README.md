@@ -8,7 +8,7 @@ A web-app dashboard that ingests git repositories and measures per-author, per-f
 
 ## Status
 
-**Phase 4 (authors & merging) built** — awaiting user verification (see the progress tracker in SPEC.md section 6.0). Phases 1–3 are complete and verified. This README is kept up to date with everything a user needs to know as functionality lands (rule R-2 in SPEC.md section 8).
+**Phase 5 (remote URL ingestion & multi-repo) complete and verified.** Phase 6 remains. This README is kept up to date with everything a user needs to know as functionality lands (rule R-2 in SPEC.md section 8).
 
 ## Requirements
 
@@ -36,22 +36,23 @@ npm test        # Vitest suite (parser + metric engine)
 
 ## Using the app
 
-1. **Ingest a repository** — on the home page, upload a zip of a git repository that includes its `.git` folder. Cloning the repo locally and compressing the folder works well; archives without a `.git` inside (at the root or one folder down) are rejected with a clear error.
-2. **Open the repository** from the list to explore it:
+1. **Ingest a repository** — upload a zip including `.git`, or clone a remote URL. Clone progress appears on the add card; failures show a clear error.
+2. **Compare repositories** — with two or more repos, the home page shows headline commits, authors, files, growth, and churn.
+3. **Open the repository** from the list to explore it:
    - **Metrics tab** — overview stat cards (commits, authors, files, added/removed, growth, churn, modifications, η, ρ) and the cumulative growth/churn chart. Large histories are sampled to ~800 chart points; all totals stay exact.
    - **File tree sidebar** — every path ever touched in the history. Click a directory or file for its own stat cards (including |H|, η, ρ), path-scoped chart, children breakdown (directories) or per-commit deltas (files).
    - **Commits tab** — the non-merge commit list, newest first, paginated 100 per page. Tick rows to select commits for the filter.
-3. **Filter everything** — the filter bar applies a date range, author, and/or a manual commit selection (it overrides the dates) to every metric, chart, and the commit list. Filter state lives in the URL; 'Reset filters' clears it.
-4. **Review authors** — use the Authors tab for sortable, paginated commits, modifications, churn, and ownership.
-5. **Merge identities** — tick identities, choose the canonical author, and merge. `.mailmap` is applied automatically; manual merges persist per repo.
-6. **Manage repositories** — remove a repository from the list (its extracted data is deleted from the server).
+4. **Filter everything** — the filter bar applies a date range, author, and/or a manual commit selection (it overrides the dates) to every metric, chart, and the commit list. Filter state lives in the URL; 'Reset filters' clears it.
+5. **Review authors** — use the Authors tab for sortable, paginated commits, modifications, churn, and ownership.
+6. **Merge identities** — tick identities, choose the canonical author, and merge. `.mailmap` is applied automatically; manual merges persist per repo.
+7. **Manage repositories** — remove a repository from the list (its extracted data is deleted from the server).
 
 ### Known limits (by phase)
 
 - The first analysis of a very large repository (e.g., ~100k commits, like Git) takes a little while; results are cached in memory per HEAD state. Persistent incremental caching and streaming analysis arrive in Phase 6.
-- Only zip upload is available; remote URL ingestion arrives in Phase 5.
+- Remote URL clones are full clones and run as local background jobs with polling progress.
 - Manual commit selections are capped at 5000 hashes per selection (URL length guard); unknown or ambiguous hash prefixes are rejected with a clear error.
-- Multi-repo comparison arrives in Phase 5; visual polish (treemaps/heatmaps, top-volatile rankings) in Phase 6.
+- Visual polish (treemaps/heatmaps, top-volatile rankings) arrives in Phase 6.
 
 ## Metrics
 
