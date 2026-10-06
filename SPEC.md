@@ -157,9 +157,9 @@ l-(h,d) = Σ l-(h,f) + Σ l-(h,d′)
 
 **Filters (composable, apply to all metric views)**
 - [x] FR-4 Filter by repository (repo selector).
-- [ ] FR-5 Filter by author (merged identity).
-- [ ] FR-6 Filter by file or directory path.
-- [ ] FR-7 Filter by commit set: a specified time period **or** a manually selected list of commits.
+- [x] FR-5 Filter by author (merged identity).
+- [x] FR-6 Filter by file or directory path.
+- [x] FR-7 Filter by commit set: a specified time period **or** a manually selected list of commits.
 
 **Author merging**
 - [ ] FR-8 Apply the repository's `.mailmap` when parsing history.
@@ -169,7 +169,7 @@ l-(h,d) = Σ l-(h,f) + Σ l-(h,d′)
 - [x] FR-10 Repository overview: repo-level metrics (totals + trends over time).
 - [x] FR-11 Directory view: directory metrics with drill-down into subdirectories.
 - [x] FR-12 File view: per-file metrics and per-commit deltas (added/removed/growth/churn).
-- [ ] FR-13 Commit-set metrics: added/removed/growth/churn, modifications `n`, modification frequency `η`, churn rate `ρ` for the active selection.
+- [x] FR-13 Commit-set metrics: added/removed/growth/churn, modifications `n`, modification frequency `η`, churn rate `ρ` for the active selection.
 - [ ] FR-14 Author view: author modifications `n(H,o,a)`, author churn `λ(H,o,a)`, ownership `ω(H,o,a)` per file/directory.
 
 **Visualization & UX**
@@ -188,7 +188,7 @@ Rules: phases are built in order; **every commit must be working** (builds and r
 
 - [x] Phase 1 — Core foundation & repository metrics — built, user-verified, pushed
 - [x] Phase 2 — Directory metrics & file drill-down — built, user-verified, pushed
-- [ ] Phase 3 — Filtering & commit sets — built, user-verified, pushed
+- [x] Phase 3 — Filtering & commit sets — built, user-verified, pushed
 - [ ] Phase 4 — Authors & merging — built, user-verified, pushed
 - [ ] Phase 5 — Remote URL ingestion & multi-repo — built, user-verified, pushed
 - [ ] Phase 6 — Performance & polish — built, user-verified, pushed
@@ -231,8 +231,8 @@ Rules: phases are built in order; **every commit must be working** (builds and r
 
 **Phase checklist:**
 - [x] Exit criteria met: filters combine correctly (e.g., author + path + period) across views
-- [ ] Tested and verified by the user — required before the phase is pushed (rules R-1 and R-3, section 8)
-- [ ] Pushed to `origin main`
+- [x] Tested and verified by the user — required before the phase is pushed (rules R-1 and R-3, section 8)
+- [x] Pushed to `origin main`
 
 > Implementation notes: `H` = (manual hash selection **or** time range, `from` inclusive / `to` exclusive) ∩ author; the path query scopes the measured object `o` and does **not** shrink `H` (otherwise `η ≡ 1`). Manual hashes may be full SHA-1s or unique prefixes (unknown/ambiguous → HTTP 400), capped at 5000 per selection (URL length guard). Filter state lives in the URL (`from`, `to`, `author`, `commits`) so views stay shareable; the commits table's checkboxes build the manual selection, and the dashboard-wide filter bar (dates with inclusive-day 'To', author dropdown from `GET /api/repos/:id/authors`) applies to summary, path metrics, charts, and the commit list alike.
 
