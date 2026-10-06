@@ -1,0 +1,309 @@
+# SPEC — Repo Analysis Tool (RAT)
+
+- **Source brief:** `docs/test_brief.pdf` (original PDF) with agent-readable transcription in `docs/BRIEF.md` (COMS3011A Test — Repo Analysis Tool). Read the brief before implementing; this spec operationalizes it.
+- **Status:** Approved by the user; implementation in progress — track progress in section 6.0.
+- **Repo:** this repository (`main` branch, remote `origin`). The app will be built in-place following the phases and commit policy in section 7.
+- **Agents (Qoder included):** before starting or resuming any work, read [AGENTS.md](AGENTS.md), `docs/BRIEF.md` (the project brief), and section 8 "User Rules", and follow them. Keep the section 5 FR checklist, the 6.0 progress tracker, and the per-phase checklists up to date — tick items as done immediately when they are done.
+
+---
+
+## 1. Overview
+
+Git repositories are opaque: it is hard to see how a repo evolved, who had the most impact where, and which parts are the most volatile.
+
+RAT is a **web-app dashboard for multiple repositories** that measures a defined set of metrics **per author, per file, per directory, and for the entire repository**, computed from the git history of an ingested repository.
+
+**Ingestion forms (both required):**
+1. A zip file of the repo including its `.git` file/directory.
+2. A remote repository URL, which is then deeply (fully) cloned.
+
+**Dashboard filtering by:**
+- A repository
+- An author
+- A file or directory
+- A commit set: either a specified time period, or a manually selected list of commits
+
+**Correctness targets:** metrics are validated against the brief's sample open-source repositories — cJSON, Redis, and Git (the latter ~100k commits, a performance target).
+
+---
+
+## 2. Tech Stack (confirmed)
+
+| Concern | Choice |
+| --- | --- |
+| Frontend | React 18 + Vite + TypeScript |
+| Styling | Tailwind CSS |
+| Charts | Recharts |
+| Routing | React Router |
+| Server state / data fetching | TanStack Query |
+| Backend | Node.js (>=18) + Express + TypeScript |
+| Git analysis | git CLI invoked via `child_process` |
+| Zip extraction | `adm-zip` (pure Node, no system dependency) |
+| Unit tests | Vitest (parser + metric engine) |
+| Repo layout | npm workspaces: `client/` (SPA) and `server/` (API + engine) |
+
+> Chosen with the user: React + Vite + TypeScript; Node backend (git analysis server-side); Tailwind + Recharts delegated to implementer. Vitest is included to guard metric correctness; flag now if unwanted.
+
+---
+
+## 3. Architecture
+
+```
+┌──────────────┐  zip upload /        ┌──────────────────┐   git log/numstat    ┌─────────────────┐
+│  Browser     │  clone URL (Ph.5)    │  Express API     │ ───────────────────► │ ingested repos  │
+│  (React SPA) │ ───────────────────► │  + Metric engine │                      │ (server data /) │
+│              │ ◄─────────────────── │  (server/)       │ ◄─────────────────── │ .git on disk    │
+└──────────────┘       REST/JSON      └──────────────────┘    parsed history    └─────────────────┘
+```
+
+**Data flow:**
+
+1. **Ingest** — unzip upload into `server/data/repos/<id>/` (must contain `.git`), or `git clone <url>` (Phase 5).
+2. **Extract history** — one streaming pass of:
+   `git log --no-merges --numstat --find-renames=50% --date-order` with a custom pretty format (hash, parent hash, author name + email, committer timestamp), newest-first, reversed to chronological order.
+3. **Build model** — per commit, per file: added/removed line counts.
+   - Binary files skipped (numstat reports `-`).
+   - Rename syntax `old => new` resolved so changes are attributed to the **new** path (50% rename detection).
+   - Deletions appear as `0 / N` entries and count as removed lines on that path.
+   - Merge commits excluded (`--no-merges`).
+4. **Aggregate & filter on demand** — build commit sets (`H`) from time range or manual selection, apply author/path filters, compute metrics (section 4).
+5. **Serve JSON** to the SPA; the SPA renders filterable dashboard views.
+
+**API sketch (evolves per phase):**
+
+```
+POST   /api/repos/upload            multipart zip -> { repoId }
+GET    /api/repos                   list ingested repos
+GET    /api/repos/:id/summary       repository-level metrics (+ filters later)
+GET    /api/repos/:id/commits       commit list (hash, author, date, deltas)
+GET    /api/repos/:id/tree          file/directory tree
+GET    /api/repos/:id/metrics       metrics for ?path= &author= &from= &to= &commits=
+GET    /api/repos/:id/authors       author list + identities
+POST   /api/repos/:id/authors/merge manual author merge (Phase 4)
+POST   /api/repos/clone             { url } deep clone ingestion (Phase 5)
+DELETE /api/repos/:id               remove ingested repo
+```
+
+**Core data model (server):**
+
+```ts
+interface FileChange { path: string; added: number; removed: number; }
+interface Commit {
+  hash: string;
+  parent: string | null;        // null for initial commit (empty commit h∅)
+  authorName: string;           // after mailmap/manual merging
+  authorEmail: string;
+  committerDate: number;        // unix seconds
+  changes: FileChange[];        // files touched; binary files excluded
+}
+```
+
+All metrics derive from `Commit[]` plus path/author derivations — no additional git queries per view.
+
+---
+
+## 4. Metric Definitions (implement the brief exactly)
+
+Notation: `h` = commit, `f` = file, `d` = directory, `a` = author, `H` = commit set, `o` ∈ files ∪ directories.
+
+**Commit-set algebra**
+- `H̄` = all **non-merge** commits reachable from reference commit `hr` (default `HEAD`).
+- `H ⊆ H̄`; time-period set `H(t..now) = { h ∈ H̄ | t ≤ h.committerDate }`; range set `H(i,j) = { h ∈ H̄ | i ≤ h.committerDate < j }`.
+- `H.files = ⋃ (h.files ∪ h.parent.files)` over `h ∈ H`; `H.dirs` likewise, **including the root**.
+
+**File metrics (per commit `h`, file `f`)**
+- Added lines: `l+(h,f)` — Removed lines: `l-(h,f)`
+- Growth: `δ(h,f) = l+(h,f) − l-(h,f)`
+- Churn: `λ(h,f) = l+(h,f) + l-(h,f)`
+
+**Directory metrics (per commit `h`, dir `d`)**
+Aggregated over **immediate child files** `f ∈ d` and **immediate subdirectories** `d′ ∈ d` (then recursive):
+
+```
+l+(h,d) = Σ l+(h,f) + Σ l+(h,d′)
+l-(h,d) = Σ l-(h,f) + Σ l-(h,d′)
+δ(h,d)  = Σ δ(h,f)  + Σ δ(h,d′)
+λ(h,d)  = Σ λ(h,f)  + Σ λ(h,d′)
+```
+
+**Repository metrics** — directory metrics computed on the root `/` of the commit tree.
+
+**Commit-set metrics (object `o` over set `H`)**
+- Added: `l+(H,o) = Σ l+(h,o)`; Removed, Growth, Churn analogous (sum over `h ∈ H`).
+- Modifications: `n(H,o) = Σ 1[ λ(h,o) > 0 ]` (commits that changed `o` at all)
+- Modification frequency: `η(H,o) = n(H,o) / |H|`, or `0` if `|H| = 0`
+- Churn rate: `ρ(H,o) = λ(H,o) / |H|`, or `0` if `|H| = 0`
+
+**Author metrics (author `a`, object `o`, set `H`)**
+- Authorship: `1(a,h) = 1` if `a = h.author` else `0`
+- Author modifications: `n(H,o,a) = Σ 1(a,h) · 1[ λ(h,o) > 0 ]`
+- Author churn: `λ(H,o,a) = Σ λ(h,o) · 1(a,h)`
+- Author ownership: `ω(H,o,a) = λ(H,o,a) / λ(H,o)` if `λ(H,o) ≠ 0`, else `0`
+
+**Author identity & merging**
+- `.mailmap` in the repo merges identities: parser runs git with mailmap applied so `h.author` is the canonical identity.
+- Manual merging: the user may group arbitrary raw identities into one canonical author when no mailmap exists (or in addition to it). Merges persist per repo and all author-dependent metrics re-aggregate.
+
+---
+
+## 5. Functional Requirements
+
+**Tracking:** the checkboxes below are the authoritative feature checklist for the whole build. Tick each FR as soon as the phase implementing it is complete and user-verified (rule R-1).
+
+**Ingestion**
+- [ ] FR-1 Upload a zip containing the repository **including `.git`**; validate and reject invalid archives with a clear error.
+- [ ] FR-2 Ingest via remote URL using a full (deep) clone; surface progress and clone failures clearly.
+- [ ] FR-3 Multiple repository support: add, list, remove, and switch between repos.
+
+**Filters (composable, apply to all metric views)**
+- [ ] FR-4 Filter by repository (repo selector).
+- [ ] FR-5 Filter by author (merged identity).
+- [ ] FR-6 Filter by file or directory path.
+- [ ] FR-7 Filter by commit set: a specified time period **or** a manually selected list of commits.
+
+**Author merging**
+- [ ] FR-8 Apply the repository's `.mailmap` when parsing history.
+- [ ] FR-9 Manual author-merge UI: group identities into a canonical author; merges persist and re-aggregate all views.
+
+**Metric views**
+- [ ] FR-10 Repository overview: repo-level metrics (totals + trends over time).
+- [ ] FR-11 Directory view: directory metrics with drill-down into subdirectories.
+- [ ] FR-12 File view: per-file metrics and per-commit deltas (added/removed/growth/churn).
+- [ ] FR-13 Commit-set metrics: added/removed/growth/churn, modifications `n`, modification frequency `η`, churn rate `ρ` for the active selection.
+- [ ] FR-14 Author view: author modifications `n(H,o,a)`, author churn `λ(H,o,a)`, ownership `ω(H,o,a)` per file/directory.
+
+**Visualization & UX**
+- [ ] FR-15 Charts: growth/churn trend lines, top-volatile/hottest files ranking, directory drill-down (e.g., treemap/heatmap where useful).
+- [ ] FR-16 Error handling: invalid zip, missing `.git`, failed clone, parse errors — all surfaced with actionable messages (no silent failures).
+- [ ] FR-17 Loading/progress states for upload, clone, and analysis of large repos.
+- [ ] FR-18 Clear navigation: repo → directory → file drill-down; fast on ~100k-commit repositories.
+
+---
+
+## 6. Build Phases (prioritized, cumulative)
+
+Rules: phases are built in order; **every commit must be working** (builds and runs); **each phase ends with a `git push`**; **each phase is tested and verified by the user before the next phase begins** (rule R-1, section 8). Priority maps onto the brief's cumulative rubric tiers (see 6.7).
+
+### 6.0 Progress tracker (update as work completes)
+
+- [ ] Phase 1 — Core foundation & repository metrics — built, pushed, user-verified
+- [ ] Phase 2 — Directory metrics & file drill-down — built, pushed, user-verified
+- [ ] Phase 3 — Filtering & commit sets — built, pushed, user-verified
+- [ ] Phase 4 — Authors & merging — built, pushed, user-verified
+- [ ] Phase 5 — Remote URL ingestion & multi-repo — built, pushed, user-verified
+- [ ] Phase 6 — Performance & polish — built, pushed, user-verified
+
+### Phase 1 — Core foundation & repository metrics
+**Goal:** upload a zip → see correct repository-level metrics in a minimal dashboard.
+- [ ] 1. Scaffold monorepo: `client/` (Vite React-TS + Tailwind + Router + TanStack Query), `server/` (Express TS), root workspaces + build/dev/test scripts, `.gitignore`.
+- [ ] 2. Zip ingestion endpoint: save upload, extract with `adm-zip` to `server/data/repos/<id>/`, validate `.git` present, register repo; `GET /api/repos`.
+- [ ] 3. Git history extractor: streaming `git log --no-merges --numstat --find-renames=50%` parse into the `Commit[]` model (binary skip, rename resolution, deletion-as-removal, parent linkage).
+- [ ] 4. Metric engine v1: file metrics per commit; repository metrics = root aggregation; totals over the full history commit set.
+- [ ] 5. `GET /api/repos/:id/summary` endpoint.
+- [ ] 6. Dashboard v1: upload form, repo list, overview stat cards (commits, authors, total added/removed/growth/churn), churn/growth-over-time line chart.
+- [ ] 7. Vitest unit tests for parser and metric engine against a small fixture repo.
+
+**Phase checklist:**
+- [ ] Exit criteria met: `npm run build` green at root; upload → dashboard works end-to-end; tests pass
+- [ ] Pushed to `origin main`
+- [ ] Tested and verified by the user — required before Phase 2 starts (rule R-1, section 8)
+
+### Phase 2 — Directory metrics & file drill-down
+**Goal:** explore any directory or file and see correct metrics.
+- [ ] 1. Directory metrics in engine (immediate-children recursion, memoized per commit).
+- [ ] 2. `GET /api/repos/:id/tree` and `GET /api/repos/:id/metrics?path=`.
+- [ ] 3. File tree browser (collapsible directories).
+- [ ] 4. Directory view (own + children aggregates) and file view (history, per-commit deltas).
+- [ ] 5. Commit list view: hash, author, date, per-commit added/removed.
+
+**Phase checklist:**
+- [ ] Exit criteria met: repo → directory → file navigation shows consistent, correct numbers
+- [ ] Pushed to `origin main`
+- [ ] Tested and verified by the user — required before Phase 3 starts (rule R-1, section 8)
+
+### Phase 3 — Filtering & commit sets
+**Goal:** every metric view respects a composable filter set.
+- [ ] 1. Commit-set selection: time range (`from`–`to`) and manual commit multi-select.
+- [ ] 2. Filters: author and path; compose into a single `H` definition.
+- [ ] 3. Commit-set metrics: added/removed/growth/churn plus modifications `n`, frequency `η`, churn rate `ρ`.
+- [ ] 4. API filter params on metrics/summary endpoints; UI filter bar wiring all views.
+
+**Phase checklist:**
+- [ ] Exit criteria met: filters combine correctly (e.g., author + path + period) across views
+- [ ] Pushed to `origin main`
+- [ ] Tested and verified by the user — required before Phase 4 starts (rule R-1, section 8)
+
+### Phase 4 — Authors & merging
+**Goal:** author-centric analytics with identity merging.
+- [ ] 1. `.mailmap` support: parse with mailmap-applied identities.
+- [ ] 2. `GET /api/repos/:id/authors`; author table with their metrics (modifications, churn, ownership) per selected object/set.
+- [ ] 3. Manual merge UI: select identities → merge into canonical author; mapping persisted per repo; all views re-aggregate.
+- [ ] 4. Author ownership visualization (e.g., ownership bars per file/directory).
+
+**Phase checklist:**
+- [ ] Exit criteria met: mailmap + manual merges change author metrics everywhere consistently
+- [ ] Pushed to `origin main`
+- [ ] Tested and verified by the user — required before Phase 5 starts (rule R-1, section 8)
+
+### Phase 5 — Remote URL ingestion & multi-repo
+**Goal:** both ingestion forms and multi-repo workflows complete.
+- [ ] 1. `POST /api/repos/clone { url }`: full `git clone`, progress feedback, timeout and error handling.
+- [ ] 2. Repo manager UI: add (zip or URL), remove, switch.
+- [ ] 3. Multi-repo dashboard: headline metrics compared across repos.
+
+**Phase checklist:**
+- [ ] Exit criteria met: can clone cJSON/Redis/Git URLs, switch between repos, compare
+- [ ] Pushed to `origin main`
+- [ ] Tested and verified by the user — required before Phase 6 starts (rule R-1, section 8)
+
+### Phase 6 — Performance & polish
+**Goal:** fast on ~100k-commit repos; polished, inspired UX.
+- [ ] 1. Analysis cache per repo keyed by `HEAD` hash + merge-map version; incremental log parsing (only new commits).
+- [ ] 2. Streaming parse with batched aggregation; constant-memory pass where feasible; no redundant git invocations per view.
+- [ ] 3. Visualization upgrade: trend lines everywhere, directory churn treemap/heatmap, top-modified files, author ownership.
+- [ ] 4. QoL: toasts, skeletons/empty states, helpful errors, README with run instructions.
+
+**Phase checklist:**
+- [ ] Exit criteria met: Git repo (~100k commits) analyzes and browses without long freezes; all FRs checked
+- [ ] Pushed to `origin main`
+- [ ] Tested and verified by the user — final gate; marks the project complete (rule R-1, section 8)
+
+### 6.7 Rubric traceability
+
+| Rubric tier | Covered by |
+| --- | --- |
+| ≤ 25%: some metric categories + one ingestion form | Phase 1 (zip + repo metrics) |
+| ≤ 50%: all metrics correct + both ingestion forms | Phases 1–3 (metrics), 5 (URL) |
+| ≤ 75%: + filtering, author merge, multi-repo | Phases 3, 4, 5 |
+| ≤ 100%: + efficient algorithms, inspired visualization, QoL on large repos | Phase 6 (architecture 25% + usability 25%) |
+
+---
+
+## 7. Workflow & Commit Policy
+
+- **Commits:** small, conventional (`feat:`, `fix:`, `chore:`, `docs:`, `test:`), one logical unit per commit, committed after each working unit — never in bulk at phase end.
+- **Green-only commits:** before every commit, the root build (`npm run build` for client + server) must pass and the app must start; Vitest suite must pass. No broken or partially-working code is ever committed.
+- **Pushes:** `git push` to `origin main` at the **end of each phase** (after its exit criteria are met).
+- **User verification (R-1):** after the push, the agent stops and the user tests and verifies the phase; only explicit user approval opens the next phase (see section 8).
+- **Docs (R-2):** README.md is updated in the same phase whenever user-facing behavior, commands, or requirements change.
+- **SPEC.md** itself is committed as the first commit before Phase 1 work begins.
+- If a unit turns out larger than one green commit, split it; if it can't be finished green, it is finished before moving on.
+
+---
+
+## 8. User Rules (agents MUST check this section)
+
+Any agent working in this repository (Qoder or otherwise) MUST read this section before starting or resuming any work, MUST re-check it before each commit and before starting any new phase, and MUST follow every rule below. Rules in this section take precedence over the spec's default workflow. When the user specifies a new rule, append it here with the next `R-n` id; never delete or silently weaken an existing rule.
+
+- **R-1 — User verification gate:** Each phase must be tested and verified by the user before moving on to the next phase. After a phase's exit criteria are met and it is pushed, the agent must stop and ask the user to test and verify; the next phase may only start after the user explicitly approves. Record approval by ticking the phase's "Tested and verified by the user" checkbox and the phase entry in the progress tracker (6.0).
+
+- **R-2 — README accuracy:** README.md must always describe what a cloner/user needs to know to run and use the app correctly. Update it in the same phase whenever user-facing behavior, commands, or requirements change.
+
+## 9. Assumptions & Non-Goals
+
+- Single-user, locally-run tool: no authentication, no multi-tenancy, no cloud deployment.
+- Analysis runs server-side on demand; ingested repos persist on disk under `server/data/repos/`.
+- Only non-merge commits are measured; default reference commit is `HEAD` (selecting another reference is out of scope).
+- Initial commit's parent is the empty commit `h∅` — no special-casing beyond a zero baseline.
+- Committers date (`committer-date`) is the timestamp used for all time filtering, per the brief.
+- Out of scope: scheduled refresh, GitHub/GitLab API integration, editing repository contents, concurrent users.
