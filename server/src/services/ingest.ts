@@ -68,7 +68,7 @@ export async function ingestZip(zipPath: string, displayName: string): Promise<R
 
     const finalDir = path.join(dirs.reposDir, id);
     fs.renameSync(located, finalDir);
-    return registerRepo(id, displayName, finalDir);
+    return registerRepo(id, displayName, finalDir, { source: 'zip' });
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }

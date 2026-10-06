@@ -3,6 +3,7 @@ import { NextFunction, Request, Response, Router } from 'express';
 import multer from 'multer';
 import { dirs, ensureDataDirs, getRepo, listRepos, removeRepo } from '../services/repoStore.js';
 import { IngestError, ingestZip, sanitizeRepoName } from '../services/ingest.js';
+import { getCloneJob, startCloneJob } from '../services/clone.js';
 import { getHistory, getMergedHistory } from '../services/historyCache.js';
 import { CommitSetError, resolveCommitSet, type CommitSetFilter } from '../services/commitSet.js';
 import {
@@ -39,8 +40,14 @@ const asyncHandler =
 
 export const reposRouter = Router();
 
-function toPublic(entry: { id: string; name: string; addedAt: string }): RepoPublic {
-  return { id: entry.id, name: entry.name, addedAt: entry.addedAt };
+function toPublic(entry: RepoMeta): RepoPublic {
+  return {
+    id: entry.id,
+    name: entry.name,
+    addedAt: entry.addedAt,
+    source: entry.source,
+    sourceUrl: entry.sourceUrl,
+  };
 }
 
 /** Resolve :id to a repo, responding 404 and returning null when missing. */
@@ -117,6 +124,20 @@ reposRouter.post(
     }
   }),
 );
+
+reposRouter.post('/clone', (req, res) => {
+  const body = req.body as { url?: unknown };
+  res.status(202).json(startCloneJob(body.url));
+});
+
+reposRouter.get('/clone/:jobId', (req, res) => {
+  const job = getCloneJob(req.params.jobId);
+  if (!job) {
+    res.status(404).json({ error: 'Clone job not found.' });
+    return;
+  }
+  res.json(job);
+});
 
 reposRouter.get('/:id/summary', asyncHandler(async (req, res) => {
   const repo = requireRepo(req, res);

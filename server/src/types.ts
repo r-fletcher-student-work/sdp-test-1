@@ -17,12 +17,16 @@ export interface CommitRecord {
   changes: FileChange[];
 }
 
+export type RepoSource = 'zip' | 'url';
+
 export interface RepoMeta {
   id: string;
   name: string;
   /** absolute path to the repository on disk */
   path: string;
   addedAt: string;
+  source?: RepoSource;
+  sourceUrl?: string;
 }
 
 /** Public (client-facing) repo representation — no filesystem paths. */
@@ -30,4 +34,6 @@ export interface RepoPublic {
   id: string;
   name: string;
   addedAt: string;
+  source?: RepoSource;
+  sourceUrl?: string;
 }

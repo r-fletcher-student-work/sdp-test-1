@@ -36,8 +36,13 @@ function saveRegistry(repos: RepoMeta[]): void {
   fs.writeFileSync(registryFile, JSON.stringify(repos, null, 2));
 }
 
-export function registerRepo(id: string, name: string, repoPath: string): RepoMeta {
-  const entry: RepoMeta = { id, name, path: repoPath, addedAt: new Date().toISOString() };
+export function registerRepo(
+  id: string,
+  name: string,
+  repoPath: string,
+  metadata: Pick<RepoMeta, 'source' | 'sourceUrl'> = {},
+): RepoMeta {
+  const entry: RepoMeta = { id, name, path: repoPath, addedAt: new Date().toISOString(), ...metadata };
   saveRegistry([...listRepos(), entry]);
   return entry;
 }
