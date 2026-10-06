@@ -169,8 +169,11 @@ export function AuthorPanel({ repoId, path, filter }: AuthorPanelProps) {
           </div>
 
           <div className="space-y-3 border-t border-slate-100 px-6 py-4">
+            <div>
+              <div className="text-sm font-medium text-slate-700">Merge identities</div>
+              <p className="text-xs text-slate-500">Combine duplicate identities under one author.</p>
+            </div>
             <div className="flex flex-wrap items-center gap-3">
-              <span className="text-sm font-medium text-slate-700">Merge identities</span>
               <select
                 value={canonical}
                 onChange={(event) => setCanonical(event.target.value)}
