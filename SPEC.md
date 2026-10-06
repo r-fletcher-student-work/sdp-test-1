@@ -151,12 +151,12 @@ l-(h,d) = Σ l-(h,f) + Σ l-(h,d′)
 **Tracking:** the checkboxes below are the authoritative feature checklist for the whole build. Tick each FR as soon as the phase implementing it is complete and user-verified (rule R-1).
 
 **Ingestion**
-- [ ] FR-1 Upload a zip containing the repository **including `.git`**; validate and reject invalid archives with a clear error.
+- [x] FR-1 Upload a zip containing the repository **including `.git`**; validate and reject invalid archives with a clear error.
 - [ ] FR-2 Ingest via remote URL using a full (deep) clone; surface progress and clone failures clearly.
-- [ ] FR-3 Multiple repository support: add, list, remove, and switch between repos.
+- [x] FR-3 Multiple repository support: add, list, remove, and switch between repos.
 
 **Filters (composable, apply to all metric views)**
-- [ ] FR-4 Filter by repository (repo selector).
+- [x] FR-4 Filter by repository (repo selector).
 - [ ] FR-5 Filter by author (merged identity).
 - [ ] FR-6 Filter by file or directory path.
 - [ ] FR-7 Filter by commit set: a specified time period **or** a manually selected list of commits.
@@ -166,9 +166,9 @@ l-(h,d) = Σ l-(h,f) + Σ l-(h,d′)
 - [ ] FR-9 Manual author-merge UI: group identities into a canonical author; merges persist and re-aggregate all views.
 
 **Metric views**
-- [ ] FR-10 Repository overview: repo-level metrics (totals + trends over time).
-- [ ] FR-11 Directory view: directory metrics with drill-down into subdirectories.
-- [ ] FR-12 File view: per-file metrics and per-commit deltas (added/removed/growth/churn).
+- [x] FR-10 Repository overview: repo-level metrics (totals + trends over time).
+- [x] FR-11 Directory view: directory metrics with drill-down into subdirectories.
+- [x] FR-12 File view: per-file metrics and per-commit deltas (added/removed/growth/churn).
 - [ ] FR-13 Commit-set metrics: added/removed/growth/churn, modifications `n`, modification frequency `η`, churn rate `ρ` for the active selection.
 - [ ] FR-14 Author view: author modifications `n(H,o,a)`, author churn `λ(H,o,a)`, ownership `ω(H,o,a)` per file/directory.
 
@@ -187,7 +187,7 @@ Rules: phases are built in order; **every commit must be working** (builds and r
 ### 6.0 Progress tracker (update as work completes)
 
 - [x] Phase 1 — Core foundation & repository metrics — built, user-verified, pushed
-- [ ] Phase 2 — Directory metrics & file drill-down — built, user-verified, pushed
+- [x] Phase 2 — Directory metrics & file drill-down — built, user-verified, pushed
 - [ ] Phase 3 — Filtering & commit sets — built, user-verified, pushed
 - [ ] Phase 4 — Authors & merging — built, user-verified, pushed
 - [ ] Phase 5 — Remote URL ingestion & multi-repo — built, user-verified, pushed
@@ -219,7 +219,7 @@ Rules: phases are built in order; **every commit must be working** (builds and r
 
 **Phase checklist:**
 - [x] Exit criteria met: repo → directory → file navigation shows consistent, correct numbers
-- [ ] Tested and verified by the user — required before the phase is pushed (rules R-1 and R-3, section 8)
+- [x] Tested and verified by the user — required before the phase is pushed (rules R-1 and R-3, section 8)
 - [x] Pushed to `origin main`
 
 ### Phase 3 — Filtering & commit sets
