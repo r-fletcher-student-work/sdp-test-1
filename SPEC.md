@@ -224,15 +224,17 @@ Rules: phases are built in order; **every commit must be working** (builds and r
 
 ### Phase 3 — Filtering & commit sets
 **Goal:** every metric view respects a composable filter set.
-- [ ] 1. Commit-set selection: time range (`from`–`to`) and manual commit multi-select.
-- [ ] 2. Filters: author and path; compose into a single `H` definition.
-- [ ] 3. Commit-set metrics: added/removed/growth/churn plus modifications `n`, frequency `η`, churn rate `ρ`.
-- [ ] 4. API filter params on metrics/summary endpoints; UI filter bar wiring all views.
+- [x] 1. Commit-set selection: time range (`from`–`to`) and manual commit multi-select.
+- [x] 2. Filters: author and path; compose into a single `H` definition.
+- [x] 3. Commit-set metrics: added/removed/growth/churn plus modifications `n`, frequency `η`, churn rate `ρ`.
+- [x] 4. API filter params on metrics/summary endpoints; UI filter bar wiring all views.
 
 **Phase checklist:**
-- [ ] Exit criteria met: filters combine correctly (e.g., author + path + period) across views
+- [x] Exit criteria met: filters combine correctly (e.g., author + path + period) across views
 - [ ] Tested and verified by the user — required before the phase is pushed (rules R-1 and R-3, section 8)
 - [ ] Pushed to `origin main`
+
+> Implementation notes: `H` = (manual hash selection **or** time range, `from` inclusive / `to` exclusive) ∩ author; the path query scopes the measured object `o` and does **not** shrink `H` (otherwise `η ≡ 1`). Manual hashes may be full SHA-1s or unique prefixes (unknown/ambiguous → HTTP 400), capped at 5000 per selection (URL length guard). Filter state lives in the URL (`from`, `to`, `author`, `commits`) so views stay shareable; the commits table's checkboxes build the manual selection, and the dashboard-wide filter bar (dates with inclusive-day 'To', author dropdown from `GET /api/repos/:id/authors`) applies to summary, path metrics, charts, and the commit list alike.
 
 ### Phase 4 — Authors & merging
 **Goal:** author-centric analytics with identity merging.
