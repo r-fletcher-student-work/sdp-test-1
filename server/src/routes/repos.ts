@@ -1,8 +1,9 @@
 import fs from 'node:fs';
 import { NextFunction, Request, Response, Router } from 'express';
 import multer from 'multer';
-import { dirs, ensureDataDirs, listRepos, removeRepo } from '../services/repoStore.js';
+import { dirs, ensureDataDirs, getRepo, listRepos, removeRepo } from '../services/repoStore.js';
 import { IngestError, ingestZip, sanitizeRepoName } from '../services/ingest.js';
+import { getRepoSummary } from '../services/summary.js';
 import type { RepoPublic } from '../types.js';
 
 const upload = multer({
@@ -52,6 +53,16 @@ reposRouter.post(
     }
   }),
 );
+
+reposRouter.get('/:id/summary', asyncHandler(async (req, res) => {
+  const repo = getRepo(req.params.id);
+  if (!repo) {
+    res.status(404).json({ error: 'Repository not found.' });
+    return;
+  }
+  const summary = await getRepoSummary(repo);
+  res.json({ repo: toPublic(repo), summary });
+}));
 
 reposRouter.delete('/:id', (req, res) => {
   const removed = removeRepo(req.params.id);
