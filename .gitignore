@@ -1,0 +1,14 @@
+# dependencies
+node_modules/
+
+# builds
+dist/
+
+# runtime data (ingested repositories, registry, temp)
+server/data/
+
+# misc
+*.log
+.DS_Store
+.env
+.env.*
