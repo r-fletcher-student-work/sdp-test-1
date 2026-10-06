@@ -78,9 +78,9 @@ function TreeRow({ node, depth, selectedPath, onSelect }: TreeRowProps) {
           <span className="w-[22px] shrink-0" />
         )}
         {isDir ? (
-          <FolderIcon className="shrink-0 text-blue-400" />
+          <FolderIcon className="h-4 w-4 shrink-0 text-blue-400" />
         ) : (
-          <FileIcon className="shrink-0 text-slate-400" />
+          <FileIcon className="h-4 w-4 shrink-0 text-slate-400" />
         )}
         <span className="truncate">{node.name}</span>
       </div>

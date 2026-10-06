@@ -218,9 +218,9 @@ function ChildrenTable({
                   <td className="px-6 py-3">
                     <span className="flex items-center gap-2 font-medium text-slate-900">
                       {child.type === 'dir' ? (
-                        <FolderIcon className="text-blue-400" />
+                        <FolderIcon className="h-4 w-4 shrink-0 text-blue-400" />
                       ) : (
-                        <FileIcon className="text-slate-400" />
+                        <FileIcon className="h-4 w-4 shrink-0 text-slate-400" />
                       )}
                       {child.name}
                     </span>
