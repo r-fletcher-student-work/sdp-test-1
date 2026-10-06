@@ -1,15 +1,17 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { api, type CommitsResponse } from '../api/client';
-import type { ChildMetric, PathMetrics } from '../api/types';
+import type { ChildMetric, CommitSetFilter, PathMetrics } from '../api/types';
 import { ErrorBanner } from './ErrorBanner';
 import { MetricsChart } from './MetricsChart';
 import { FileIcon, FolderIcon } from './icons';
-import { fmtDate, fmtNumber } from '../lib/format';
+import { fmtDate, fmtNumber, fmtRate } from '../lib/format';
 
 interface PathMetricsViewProps {
   repoId: string;
   path: string;
   repoName: string;
+  /** active commit-set filter (H) shared across the dashboard */
+  filter: CommitSetFilter;
   onSelectPath(path: string): void;
 }
 
@@ -18,16 +20,17 @@ interface PathMetricsViewProps {
  * directories — the immediate-children table; for files — the per-commit
  * deltas list.
  */
-export function PathMetricsView({ repoId, path, repoName, onSelectPath }: PathMetricsViewProps) {
+export function PathMetricsView({ repoId, path, repoName, filter, onSelectPath }: PathMetricsViewProps) {
+  const filterKey = JSON.stringify(filter);
   const metricsQuery = useQuery({
-    queryKey: ['metrics', repoId, path],
-    queryFn: () => api.getMetrics(repoId, path),
+    queryKey: ['metrics', repoId, path, filterKey],
+    queryFn: () => api.getMetrics(repoId, path, filter),
     retry: 1,
   });
   const isFile = metricsQuery.data?.metrics.type === 'file';
   const commitsQuery = useQuery({
-    queryKey: ['path-commits', repoId, path],
-    queryFn: () => api.getCommits(repoId, { path, limit: 100 }),
+    queryKey: ['path-commits', repoId, path, filterKey],
+    queryFn: () => api.getCommits(repoId, { path, limit: 100, filter }),
     enabled: isFile === true,
     retry: 1,
   });
@@ -36,8 +39,8 @@ export function PathMetricsView({ repoId, path, repoName, onSelectPath }: PathMe
     return (
       <div className="animate-pulse space-y-4">
         <div className="h-14 rounded-lg bg-slate-200" />
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
-          {Array.from({ length: 5 }).map((_, i) => (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="h-20 rounded-lg bg-slate-200" />
           ))}
         </div>
@@ -137,7 +140,7 @@ function Breadcrumb({
 }
 
 function PathStats({ metrics }: { metrics: PathMetrics }) {
-  const items: Array<{ label: string; value: number; tone?: string }> = [
+  const items: Array<{ label: string; value: number | string; tone?: string }> = [
     { label: 'Added lines', value: metrics.totals.added, tone: 'text-emerald-600' },
     { label: 'Removed lines', value: metrics.totals.removed, tone: 'text-rose-600' },
     {
@@ -147,6 +150,9 @@ function PathStats({ metrics }: { metrics: PathMetrics }) {
     },
     { label: 'Churn', value: metrics.totals.churn, tone: 'text-blue-600' },
     { label: 'Modifications', value: metrics.modifications },
+    { label: 'Commit set |H|', value: metrics.commitSetSize, tone: 'text-indigo-600' },
+    { label: 'Modif. freq. η', value: fmtRate(metrics.frequency), tone: 'text-indigo-600' },
+    { label: 'Churn rate ρ', value: fmtRate(metrics.churnRate), tone: 'text-indigo-600' },
   ];
   return (
     <div>
@@ -158,7 +164,7 @@ function PathStats({ metrics }: { metrics: PathMetrics }) {
         )}
         <span className="uppercase tracking-wide">{metrics.type}</span>
       </div>
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {items.map((item) => (
           <div
             key={item.label}
@@ -168,7 +174,7 @@ function PathStats({ metrics }: { metrics: PathMetrics }) {
               {item.label}
             </div>
             <div className={`mt-1 text-2xl font-semibold ${item.tone ?? 'text-slate-900'}`}>
-              {fmtNumber(item.value)}
+              {typeof item.value === 'number' ? fmtNumber(item.value) : item.value}
             </div>
           </div>
         ))}
@@ -264,8 +270,8 @@ function FileCommitDeltas({
       <div className="border-b border-slate-100 px-6 py-4">
         <h2 className="text-lg font-semibold">Changes per commit</h2>
         <p className="text-sm text-slate-500">
-          {fmtNumber(total)} commit{total === 1 ? '' : 's'} touched this file
-          {total > commits.length ? ` — showing the ${fmtNumber(commits.length)} newest` : ''}.
+          {fmtNumber(total)} commit{total === 1 ? '' : 's'} in the active commit set touched this
+          file{total > commits.length ? ` — showing the ${fmtNumber(commits.length)} newest` : ''}.
         </p>
       </div>
       <div className="overflow-x-auto">

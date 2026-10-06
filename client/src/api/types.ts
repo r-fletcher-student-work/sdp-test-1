@@ -28,7 +28,38 @@ export interface RepoSummary {
   firstCommitDate: number | null;
   lastCommitDate: number | null;
   totals: Totals;
+  /** commits in the active set H whose churn on the object is > 0 */
+  modifications: number;
+  /** η = modifications / |H|; 0 when |H| = 0 */
+  frequency: number;
+  /** ρ = churn / |H|; 0 when |H| = 0 */
+  churnRate: number;
   timeseries: CommitPoint[];
+}
+
+/**
+ * Active dashboard filter (SPEC sections 1 and 4): the commit set H is the
+ * manual hash selection or the time range (`from` inclusive, `to` exclusive),
+ * intersected with the author filter. A path query only scopes the object.
+ */
+export interface CommitSetFilter {
+  /** inclusive lower committer-date bound (unix seconds) */
+  from?: number;
+  /** exclusive upper committer-date bound (unix seconds) */
+  to?: number;
+  /** manual selection: full hashes or unique prefixes; overrides from/to */
+  hashes?: string[];
+  /** canonical author identity 'Name <email>' */
+  author?: string;
+}
+
+export interface AuthorInfo {
+  name: string;
+  email: string;
+  /** canonical identity key 'Name <email>' used by the author filter */
+  key: string;
+  /** non-merge commits in the parsed history */
+  commitCount: number;
 }
 
 export interface TreeNode {
@@ -57,6 +88,12 @@ export interface PathMetrics {
   totals: Totals;
   /** commits whose churn on the object is > 0 */
   modifications: number;
+  /** number of commits in the active set H */
+  commitSetSize: number;
+  /** η = modifications / |H|; 0 when |H| = 0 */
+  frequency: number;
+  /** ρ = churn / |H|; 0 when |H| = 0 */
+  churnRate: number;
   timeseries: CommitPoint[];
   /** immediate children with recursive totals; directories only, else [] */
   children: ChildMetric[];

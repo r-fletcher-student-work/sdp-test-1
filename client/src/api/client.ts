@@ -1,5 +1,7 @@
 import type {
+  AuthorInfo,
   CommitListItem,
+  CommitSetFilter,
   PathMetrics,
   RepoPublic,
   RepoSummary,
@@ -42,6 +44,34 @@ export interface CommitsResponse {
   commits: CommitListItem[];
 }
 
+export interface AuthorsResponse {
+  repo: RepoPublic;
+  authors: AuthorInfo[];
+}
+
+/** URLSearchParams for a commit-set filter (empty when nothing is set). */
+function filterParams(filter: CommitSetFilter = {}): URLSearchParams {
+  const qs = new URLSearchParams();
+  if (filter.from !== undefined) qs.set('from', String(filter.from));
+  if (filter.to !== undefined) qs.set('to', String(filter.to));
+  if (filter.hashes && filter.hashes.length > 0) qs.set('commits', filter.hashes.join(','));
+  if (filter.author) qs.set('author', filter.author);
+  return qs;
+}
+
+/** Repo endpoint URL with the commit-set filter and any extra params merged. */
+function repoUrl(
+  id: string,
+  action: string,
+  filter: CommitSetFilter = {},
+  extra: URLSearchParams = new URLSearchParams(),
+): string {
+  const qs = filterParams(filter);
+  for (const [key, value] of extra) qs.set(key, value);
+  const query = qs.toString();
+  return `/repos/${id}/${action}${query ? `?${query}` : ''}`;
+}
+
 export const api = {
   listRepos: () => request<RepoPublic[]>('/repos'),
 
@@ -53,19 +83,24 @@ export const api = {
 
   deleteRepo: (id: string) => request<void>(`/repos/${id}`, { method: 'DELETE' }),
 
-  getSummary: (id: string) => request<SummaryResponse>(`/repos/${id}/summary`),
+  getSummary: (id: string, filter: CommitSetFilter = {}) =>
+    request<SummaryResponse>(repoUrl(id, 'summary', filter)),
 
   getTree: (id: string) => request<TreeResponse>(`/repos/${id}/tree`),
 
-  getMetrics: (id: string, path: string) =>
-    request<MetricsResponse>(`/repos/${id}/metrics?path=${encodeURIComponent(path)}`),
+  getAuthors: (id: string) => request<AuthorsResponse>(`/repos/${id}/authors`),
 
-  getCommits: (id: string, params: { path?: string; limit?: number; offset?: number } = {}) => {
-    const qs = new URLSearchParams();
-    if (params.path) qs.set('path', params.path);
-    if (params.limit !== undefined) qs.set('limit', String(params.limit));
-    if (params.offset !== undefined) qs.set('offset', String(params.offset));
-    const suffix = qs.toString() ? `?${qs.toString()}` : '';
-    return request<CommitsResponse>(`/repos/${id}/commits${suffix}`);
+  getMetrics: (id: string, path: string, filter: CommitSetFilter = {}) =>
+    request<MetricsResponse>(repoUrl(id, 'metrics', filter, new URLSearchParams({ path }))),
+
+  getCommits: (
+    id: string,
+    params: { path?: string; limit?: number; offset?: number; filter?: CommitSetFilter } = {},
+  ) => {
+    const extra = new URLSearchParams();
+    if (params.path) extra.set('path', params.path);
+    if (params.limit !== undefined) extra.set('limit', String(params.limit));
+    if (params.offset !== undefined) extra.set('offset', String(params.offset));
+    return request<CommitsResponse>(repoUrl(id, 'commits', params.filter, extra));
   },
 };
