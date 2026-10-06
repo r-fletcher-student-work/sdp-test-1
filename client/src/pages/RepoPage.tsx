@@ -182,12 +182,8 @@ export function RepoPage() {
                   <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
                     <h2 className="text-lg font-semibold">Growth &amp; churn over time</h2>
                     <p className="text-sm text-slate-500">
-                      Cumulative across{' '}
-                      {filterActive
-                        ? 'the commits in the active commit set, oldest to newest'
-                        : 'all commits, oldest to newest'}
-                      . Very large histories are sampled per point to keep the chart responsive —
-                      every value stays exact.
+                      Cumulative across {filterActive ? 'the active commit set' : 'all commits'}.
+                      Large histories are sampled per point; values stay exact.
                     </p>
                     <div className="mt-4">
                       <MetricsChart data={summaryQuery.data.summary.timeseries} />

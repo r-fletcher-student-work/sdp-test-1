@@ -65,8 +65,8 @@ export function CommitsTable({ repoId, path, filter = {}, selection, onToggleCom
                 Touching <code className="rounded bg-slate-100 px-1">{path}</code> —{' '}
               </>
             ) : null}
-            {fmtNumber(total)} non-merge commit{total === 1 ? '' : 's'} in the active commit set,
-            newest first. Tick rows to build a manual selection.
+            {fmtNumber(total)} non-merge commit{total === 1 ? '' : 's'}, newest first. Tick rows
+            to select.
           </p>
         </div>
         <div className="flex items-center gap-2 text-sm">

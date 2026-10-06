@@ -117,9 +117,8 @@ export function FilterBar({ filter, authors, onChange }: FilterBarProps) {
         )}
       </div>
       <p className="mt-3 text-xs text-slate-400">
-        Every metric, chart, and the commit list use the commit set H = (date range or selection)
-        ∩ author. The selected path scopes what is measured — it does not shrink H. 'To' includes
-        that whole day; the selection overrides the dates.
+        Applies to every metric, chart, and the commit list. The selection overrides the date
+        range.
       </p>
     </section>
   );

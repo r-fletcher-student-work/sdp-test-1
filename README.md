@@ -38,14 +38,10 @@ npm test        # Vitest suite (parser + metric engine)
 
 1. **Ingest a repository** — on the home page, upload a zip of a git repository that includes its `.git` folder. Cloning the repo locally and compressing the folder works well; archives without a `.git` inside (at the root or one folder down) are rejected with a clear error.
 2. **Open the repository** from the list to explore it:
-   - **Metrics tab** — overview stat cards (commits, authors, files touched, added / removed lines, growth, churn, modifications, modification frequency η, churn rate ρ) and the cumulative growth/churn chart. Very large histories (800+ commits) are sampled to ~800 points for rendering; every plotted value and all totals remain exact.
-   - **File tree sidebar** — browse every path ever touched in the history (deleted files included). Click a directory or file to see its own metrics: stat cards (including the active commit set |H| with η and ρ), a path-scoped cumulative chart, an immediate-children breakdown table (directories), or the per-commit added/removed deltas (files). Breadcrumb segments navigate back up.
-   - **Commits tab** — the non-merge commit list in the active commit set, newest first, paginated 100 per page (up to 500), with author, date, subject, and per-commit added/removed. Tick rows to build a manual commit selection.
-3. **Filter everything** — the filter bar above the views defines the commit set H used by every metric, chart, and the commit list:
-   - **Date range** — 'From' is inclusive, 'To' includes that whole day.
-   - **Manual selection** — tick commits in the Commits tab; the selection overrides the date range (a blue chip shows the count).
-   - **Author** — pick from the dropdown (busiest first, with commit counts).
-   - The selected file/directory path scopes *what* is measured; it does not shrink H. Filter state lives in the URL, so filtered views are shareable and survive reloads. 'Reset filters' clears everything.
+   - **Metrics tab** — overview stat cards (commits, authors, files, added/removed, growth, churn, modifications, η, ρ) and the cumulative growth/churn chart. Large histories are sampled to ~800 chart points; all totals stay exact.
+   - **File tree sidebar** — every path ever touched in the history. Click a directory or file for its own stat cards (including |H|, η, ρ), path-scoped chart, children breakdown (directories) or per-commit deltas (files).
+   - **Commits tab** — the non-merge commit list, newest first, paginated 100 per page. Tick rows to select commits for the filter.
+3. **Filter everything** — the filter bar applies a date range, author, and/or a manual commit selection (it overrides the dates) to every metric, chart, and the commit list. Filter state lives in the URL; 'Reset filters' clears it.
 4. **Manage repositories** — remove a repository from the list (its extracted data is deleted from the server).
 
 ### Known limits (by phase)

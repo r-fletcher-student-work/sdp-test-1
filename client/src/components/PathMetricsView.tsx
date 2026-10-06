@@ -270,8 +270,8 @@ function FileCommitDeltas({
       <div className="border-b border-slate-100 px-6 py-4">
         <h2 className="text-lg font-semibold">Changes per commit</h2>
         <p className="text-sm text-slate-500">
-          {fmtNumber(total)} commit{total === 1 ? '' : 's'} in the active commit set touched this
-          file{total > commits.length ? ` — showing the ${fmtNumber(commits.length)} newest` : ''}.
+          {fmtNumber(total)} commit{total === 1 ? '' : 's'} touched this file
+          {total > commits.length ? ` — showing the ${fmtNumber(commits.length)} newest` : ''}.
         </p>
       </div>
       <div className="overflow-x-auto">
