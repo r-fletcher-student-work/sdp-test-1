@@ -41,7 +41,7 @@ export const CHART_MAX_POINTS = 800;
  * index step is > 1 so sampled indices are strictly increasing: every returned
  * point is a real commit whose cumulative values are exact.
  */
-function downsampleSeries(points: CommitPoint[], max: number): CommitPoint[] {
+export function downsampleSeries(points: CommitPoint[], max: number): CommitPoint[] {
   if (points.length <= max) return points;
   const sampled: CommitPoint[] = new Array(max);
   const step = (points.length - 1) / (max - 1);
@@ -104,4 +104,70 @@ export function computeRepoSummary(commits: CommitRecord[]): RepoSummary {
     totals,
     timeseries: downsampleSeries(timeseries, CHART_MAX_POINTS),
   };
+}
+
+/**
+ * Per-commit directory aggregation, keyed by directory path ('' = root).
+ * Built once per history and memoized; consumers look up a directory's
+ * added/removed sums for a given commit in O(1).
+ */
+export type DirAggregate = Map<string, { added: number; removed: number }>;
+
+/**
+ * Directory metrics per commit, following the brief's immediate-children
+ * recursion: every changed file contributes its added/removed counts to each
+ * ancestor directory (root '' included). Aggregate over the whole history by
+ * summing a path's entries across commits.
+ */
+export function computeDirAggregates(commits: CommitRecord[]): DirAggregate[] {
+  return commits.map((commit) => {
+    const agg: DirAggregate = new Map();
+    for (const change of commit.changes) {
+      const parts = change.path.split('/');
+      let prefix = '';
+      let entry = agg.get(prefix);
+      if (!entry) {
+        entry = { added: 0, removed: 0 };
+        agg.set(prefix, entry);
+      }
+      entry.added += change.added;
+      entry.removed += change.removed;
+      for (let i = 0; i < parts.length - 1; i++) {
+        prefix = prefix ? `${prefix}/${parts[i]}` : parts[i];
+        let dirEntry = agg.get(prefix);
+        if (!dirEntry) {
+          dirEntry = { added: 0, removed: 0 };
+          agg.set(prefix, dirEntry);
+        }
+        dirEntry.added += change.added;
+        dirEntry.removed += change.removed;
+      }
+    }
+    return agg;
+  });
+}
+
+/**
+ * Every file path ever touched (rename destinations included, deleted files
+ * kept — the brief's H.files is a historical union) and every directory
+ * prefix of a touched path ('' = root included).
+ */
+export function collectPathSets(commits: CommitRecord[]): {
+  files: Set<string>;
+  dirs: Set<string>;
+} {
+  const files = new Set<string>();
+  const dirs = new Set<string>(['']);
+  for (const commit of commits) {
+    for (const change of commit.changes) {
+      files.add(change.path);
+      const parts = change.path.split('/');
+      let prefix = '';
+      for (let i = 0; i < parts.length - 1; i++) {
+        prefix = prefix ? `${prefix}/${parts[i]}` : parts[i];
+        dirs.add(prefix);
+      }
+    }
+  }
+  return { files, dirs };
 }
