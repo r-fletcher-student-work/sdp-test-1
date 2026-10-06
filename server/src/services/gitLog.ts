@@ -1,8 +1,5 @@
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import { spawn } from 'node:child_process';
 import type { CommitRecord, FileChange } from '../types.js';
-
-const exec = promisify(execFile);
 
 // %x01 marks a new record; %x1f separates header fields. %aN/%aE apply .mailmap.
 const LOG_FORMAT = '%x01%H%x1f%P%x1f%aN%x1f%aE%x1f%ct%x1f%s';
@@ -18,27 +15,25 @@ const LOG_FORMAT = '%x01%H%x1f%P%x1f%aN%x1f%aE%x1f%ct%x1f%s';
  * - deletions appear as removed lines on the deleted path
  */
 export async function extractHistory(repoPath: string): Promise<CommitRecord[]> {
-  const { stdout } = await exec(
-    'git',
-    [
-      '-c',
-      'core.quotepath=false',
-      '-C',
-      repoPath,
-      'log',
-      '--no-merges',
-      '--use-mailmap',
-      '--numstat',
-      '--find-renames=50%',
-      '--date-order',
-      `--pretty=format:${LOG_FORMAT}`,
-    ],
-    { maxBuffer: 512 * 1024 * 1024 },
-  );
+  const args = [
+    '-c',
+    'core.quotepath=false',
+    '-C',
+    repoPath,
+    'log',
+    '--no-merges',
+    '--use-mailmap',
+    '--numstat',
+    '--find-renames=50%',
+    '--date-order',
+    `--pretty=format:${LOG_FORMAT}`,
+  ];
 
   const records: CommitRecord[] = [];
   let current: CommitRecord | null = null;
-  for (const line of stdout.split('\n')) {
+  let pending = '';
+
+  const consumeLine = (line: string): void => {
     if (line.startsWith('\u0001')) {
       if (current) records.push(current);
       current = parseHeader(line.slice(1));
@@ -46,8 +41,30 @@ export async function extractHistory(repoPath: string): Promise<CommitRecord[]> 
       const change = parseNumstatLine(line);
       if (change) current.changes.push(change);
     }
-  }
-  if (current) records.push(current);
+  };
+
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn('git', args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    let stderr = '';
+
+    child.stdout.on('data', (chunk: Buffer) => {
+      pending += chunk.toString('utf8');
+      const lines = pending.split('\n');
+      pending = lines.pop() ?? '';
+      for (const line of lines) consumeLine(line);
+    });
+    child.stderr.on('data', (chunk: Buffer) => {
+      stderr += chunk.toString('utf8');
+    });
+    child.on('error', reject);
+    child.on('close', (code) => {
+      if (pending) consumeLine(pending);
+      if (current) records.push(current);
+      if (code === 0) resolve();
+      else reject(new Error(stderr.trim() || `git log exited with status ${code ?? 'unknown'}`));
+    });
+  });
+
   records.reverse();
   return records;
 }

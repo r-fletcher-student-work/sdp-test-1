@@ -11,12 +11,13 @@ const reposDir = path.join(dataDir, 'repos');
 const tmpDir = path.join(dataDir, 'tmp');
 const uploadsDir = path.join(dataDir, 'uploads');
 const authorMergesDir = path.join(dataDir, 'author-merges');
+const cacheDir = path.join(dataDir, 'cache');
 const registryFile = path.join(dataDir, 'repos.json');
 
-export const dirs = { dataDir, reposDir, tmpDir, uploadsDir, authorMergesDir };
+export const dirs = { dataDir, reposDir, tmpDir, uploadsDir, authorMergesDir, cacheDir };
 
 export function ensureDataDirs(): void {
-  for (const dir of [dataDir, reposDir, tmpDir, uploadsDir, authorMergesDir]) {
+  for (const dir of [dataDir, reposDir, tmpDir, uploadsDir, authorMergesDir, cacheDir]) {
     fs.mkdirSync(dir, { recursive: true });
   }
 }
@@ -57,6 +58,9 @@ export function removeRepo(id: string): boolean {
   if (!entry) return false;
   fs.rmSync(entry.path, { recursive: true, force: true });
   fs.rmSync(path.join(authorMergesDir, `${id}.json`), { force: true });
+  for (const file of fs.existsSync(cacheDir) ? fs.readdirSync(cacheDir) : []) {
+    if (file.startsWith(`${id}-`)) fs.rmSync(path.join(cacheDir, file), { force: true });
+  }
   saveRegistry(repos.filter((r) => r.id !== id));
   return true;
 }

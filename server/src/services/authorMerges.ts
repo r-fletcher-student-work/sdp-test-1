@@ -34,6 +34,13 @@ function mergeFile(repoId: string): string {
   return path.join(dirs.authorMergesDir, `${repoId}.json`);
 }
 
+export function getAuthorMergeVersion(repoId: string): string {
+  const file = mergeFile(repoId);
+  if (!fs.existsSync(file)) return 'none';
+  const stat = fs.statSync(file);
+  return `${stat.mtimeMs}:${stat.size}`;
+}
+
 export function loadAuthorMerges(repoId: string): AuthorMerge[] {
   const file = mergeFile(repoId);
   if (!fs.existsSync(file)) return [];
