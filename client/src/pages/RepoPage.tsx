@@ -136,16 +136,6 @@ export function RepoPage() {
         onChange={setFilter}
       />
 
-      {summaryQuery.isLoading && (
-        <div className="animate-pulse space-y-4">
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-            {Array.from({ length: 10 }).map((_, i) => (
-              <div key={i} className="h-20 rounded-lg bg-slate-200" />
-            ))}
-          </div>
-          <div className="h-80 rounded-lg bg-slate-200" />
-        </div>
-      )}
 
       {summaryQuery.isError && (
         <ErrorBanner
@@ -205,7 +195,16 @@ export function RepoPage() {
               </aside>
 
               <section className="min-w-0 space-y-6">
-                {selectedPath === '' ? (
+                {summaryQuery.isLoading ? (
+                  <div className="animate-pulse space-y-4">
+                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+                      {Array.from({ length: 10 }).map((_, i) => (
+                        <div key={i} className="h-20 rounded-lg bg-slate-200" />
+                      ))}
+                    </div>
+                    <div className="h-80 rounded-lg bg-slate-200" />
+                  </div>
+                ) : selectedPath === '' ? (
                   summaryQuery.data && (
                     <>
                       <StatCards summary={summaryQuery.data.summary} />
