@@ -162,15 +162,15 @@ l-(h,d) = Σ l-(h,f) + Σ l-(h,d′)
 - [x] FR-7 Filter by commit set: a specified time period **or** a manually selected list of commits.
 
 **Author merging**
-- [ ] FR-8 Apply the repository's `.mailmap` when parsing history.
-- [ ] FR-9 Manual author-merge UI: group identities into a canonical author; merges persist and re-aggregate all views.
+- [x] FR-8 Apply the repository's `.mailmap` when parsing history.
+- [x] FR-9 Manual author-merge UI: group identities into a canonical author; merges persist and re-aggregate all views.
 
 **Metric views**
 - [x] FR-10 Repository overview: repo-level metrics (totals + trends over time).
 - [x] FR-11 Directory view: directory metrics with drill-down into subdirectories.
 - [x] FR-12 File view: per-file metrics and per-commit deltas (added/removed/growth/churn).
 - [x] FR-13 Commit-set metrics: added/removed/growth/churn, modifications `n`, modification frequency `η`, churn rate `ρ` for the active selection.
-- [ ] FR-14 Author view: author modifications `n(H,o,a)`, author churn `λ(H,o,a)`, ownership `ω(H,o,a)` per file/directory.
+- [x] FR-14 Author view: author modifications `n(H,o,a)`, author churn `λ(H,o,a)`, ownership `ω(H,o,a)` per file/directory.
 
 **Visualization & UX**
 - [ ] FR-15 Charts: growth/churn trend lines, top-volatile/hottest files ranking, directory drill-down (e.g., treemap/heatmap where useful).
@@ -189,7 +189,7 @@ Rules: phases are built in order; **every commit must be working** (builds and r
 - [x] Phase 1 — Core foundation & repository metrics — built, user-verified, pushed
 - [x] Phase 2 — Directory metrics & file drill-down — built, user-verified, pushed
 - [x] Phase 3 — Filtering & commit sets — built, user-verified, pushed
-- [ ] Phase 4 — Authors & merging — built, user-verified, pushed
+- [x] Phase 4 — Authors & merging — built, user-verified, pushed
 - [ ] Phase 5 — Remote URL ingestion & multi-repo — built, user-verified, pushed
 - [ ] Phase 6 — Performance & polish — built, user-verified, pushed
 
@@ -245,8 +245,8 @@ Rules: phases are built in order; **every commit must be working** (builds and r
 
 **Phase checklist:**
 - [x] Exit criteria met: mailmap + manual merges change author metrics everywhere consistently
-- [ ] Tested and verified by the user — required before the phase is pushed (rules R-1 and R-3, section 8)
-- [ ] Pushed to `origin main`
+- [x] Tested and verified by the user — required before the phase is pushed (rules R-1 and R-3, section 8)
+- [x] Pushed to `origin main`
 
 > Implementation notes: `git log` uses `.mailmap`-aware `%aN/%aE` identities with `--use-mailmap`. Manual merges are persisted per repo under `server/data/author-merges/` and applied to all metric endpoints at read time; raw/mailmapped identities remain available for future merge edits. The Metrics area has Files/Authors tabs; Authors is paginated and respects the active author filter.
 
