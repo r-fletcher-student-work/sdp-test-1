@@ -2,6 +2,7 @@ import type {
   AuthorIdentity,
   AuthorInfo,
   AuthorMerge,
+  CloneJob,
   CommitListItem,
   CommitSetFilter,
   PathMetrics,
@@ -84,6 +85,15 @@ export const api = {
     form.append('file', file);
     return request<RepoPublic>('/repos/upload', { method: 'POST', body: form });
   },
+
+  cloneRepo: (url: string) =>
+    request<CloneJob>('/repos/clone', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    }),
+
+  getCloneJob: (jobId: string) => request<CloneJob>(`/repos/clone/${jobId}`),
 
   deleteRepo: (id: string) => request<void>(`/repos/${id}`, { method: 'DELETE' }),
 

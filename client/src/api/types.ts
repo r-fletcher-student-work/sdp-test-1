@@ -1,7 +1,24 @@
+export type RepoSource = 'zip' | 'url';
+
 export interface RepoPublic {
   id: string;
   name: string;
   addedAt: string;
+  source?: RepoSource;
+  sourceUrl?: string;
+}
+
+export type CloneJobStatus = 'queued' | 'running' | 'complete' | 'failed';
+
+export interface CloneJob {
+  id: string;
+  url: string;
+  status: CloneJobStatus;
+  message: string;
+  repo?: RepoPublic;
+  error?: string;
+  startedAt: string;
+  finishedAt?: string;
 }
 
 export interface Totals {
