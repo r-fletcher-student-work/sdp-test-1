@@ -186,7 +186,7 @@ Rules: phases are built in order; **every commit must be working** (builds and r
 
 ### 6.0 Progress tracker (update as work completes)
 
-- [ ] Phase 1 — Core foundation & repository metrics — built, pushed, user-verified
+- [x] Phase 1 — Core foundation & repository metrics — built, pushed, user-verified
 - [ ] Phase 2 — Directory metrics & file drill-down — built, pushed, user-verified
 - [ ] Phase 3 — Filtering & commit sets — built, pushed, user-verified
 - [ ] Phase 4 — Authors & merging — built, pushed, user-verified
@@ -207,7 +207,7 @@ Rules: phases are built in order; **every commit must be working** (builds and r
 **Phase checklist:**
 - [x] Exit criteria met: `npm run build` green at root; upload → dashboard works end-to-end; tests pass
 - [x] Pushed to `origin main`
-- [ ] Tested and verified by the user — required before Phase 2 starts (rule R-1, section 8)
+- [x] Tested and verified by the user — required before Phase 2 starts (rule R-1, section 8)
 
 ### Phase 2 — Directory metrics & file drill-down
 **Goal:** explore any directory or file and see correct metrics.
