@@ -8,7 +8,7 @@ A web-app dashboard that ingests git repositories and measures per-author, per-f
 
 ## Status
 
-**Phase 1 (core foundation & repository metrics) complete** — awaiting user verification (see the progress tracker in SPEC.md section 6.0). Phase 2 (directory metrics & file drill-down) starts after verification. This README is kept up to date with everything a user needs to know as functionality lands (rule R-2 in SPEC.md section 8).
+**Phase 2 (directory metrics & file drill-down) complete** — awaiting user verification (see the progress tracker in SPEC.md section 6.0). Phase 3 (filtering & commit sets) starts after verification. This README is kept up to date with everything a user needs to know as functionality lands (rule R-2 in SPEC.md section 8).
 
 ## Requirements
 
@@ -37,17 +37,17 @@ npm test        # Vitest suite (parser + metric engine)
 ## Using the app
 
 1. **Ingest a repository** — on the home page, upload a zip of a git repository that includes its `.git` folder. Cloning the repo locally and compressing the folder works well; archives without a `.git` inside (at the root or one folder down) are rejected with a clear error.
-2. **Open the repository** from the list to see its overview:
-   - Stat cards: commits, authors, files touched, added / removed lines, growth, churn (non-merge commits reachable from HEAD).
-   - Chart: cumulative growth and churn over time, oldest to newest. Very large histories (800+ commits) are sampled to ~800 points for rendering; every plotted value and all totals remain exact.
+2. **Open the repository** from the list to explore it:
+   - **Metrics tab** — overview stat cards (commits, authors, files touched, added / removed lines, growth, churn) and the cumulative growth/churn chart. Very large histories (800+ commits) are sampled to ~800 points for rendering; every plotted value and all totals remain exact.
+   - **File tree sidebar** — browse every path ever touched in the history (deleted files included). Click a directory or file to see its own metrics: stat cards, a path-scoped cumulative chart, an immediate-children breakdown table (directories), or the per-commit added/removed deltas (files). Breadcrumb segments navigate back up.
+   - **Commits tab** — the full non-merge commit list, newest first, paginated 100 per page (up to 500), with author, date, subject, and per-commit added/removed.
 3. **Manage repositories** — remove a repository from the list (its extracted data is deleted from the server).
 
 ### Known limits (by phase)
 
-- The first analysis of a very large repository (e.g., ~100k commits, like Git) takes a few minutes; results are cached in memory until the server restarts. Persistent incremental caching and streaming analysis arrive in Phase 6.
+- The first analysis of a very large repository (e.g., ~100k commits, like Git) takes a little while; results are cached in memory per HEAD state. Persistent incremental caching and streaming analysis arrive in Phase 6.
 - Only zip upload is available; remote URL ingestion arrives in Phase 5.
-- Metrics are repository-level only for now; per-directory and per-file views arrive in Phase 2.
-- Filters (author, path, time period, commit selection) arrive in Phase 3; author merging in Phase 4; multi-repo comparison in Phase 5.
+- Filters (author, time period, commit selection) arrive in Phase 3; author merging in Phase 4; multi-repo comparison in Phase 5; visual polish (treemaps/heatmaps, top-volatile rankings) in Phase 6.
 
 ## Metrics
 

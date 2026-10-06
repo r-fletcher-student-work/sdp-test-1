@@ -211,15 +211,15 @@ Rules: phases are built in order; **every commit must be working** (builds and r
 
 ### Phase 2 — Directory metrics & file drill-down
 **Goal:** explore any directory or file and see correct metrics.
-- [ ] 1. Directory metrics in engine (immediate-children recursion, memoized per commit).
-- [ ] 2. `GET /api/repos/:id/tree` and `GET /api/repos/:id/metrics?path=`.
-- [ ] 3. File tree browser (collapsible directories).
-- [ ] 4. Directory view (own + children aggregates) and file view (history, per-commit deltas).
-- [ ] 5. Commit list view: hash, author, date, per-commit added/removed.
+- [x] 1. Directory metrics in engine (immediate-children recursion, memoized per commit).
+- [x] 2. `GET /api/repos/:id/tree` and `GET /api/repos/:id/metrics?path=`.
+- [x] 3. File tree browser (collapsible directories).
+- [x] 4. Directory view (own + children aggregates) and file view (history, per-commit deltas).
+- [x] 5. Commit list view: hash, author, date, per-commit added/removed.
 
 **Phase checklist:**
-- [ ] Exit criteria met: repo → directory → file navigation shows consistent, correct numbers
-- [ ] Pushed to `origin main`
+- [x] Exit criteria met: repo → directory → file navigation shows consistent, correct numbers
+- [x] Pushed to `origin main`
 - [ ] Tested and verified by the user — required before Phase 3 starts (rule R-1, section 8)
 
 ### Phase 3 — Filtering & commit sets
