@@ -8,7 +8,7 @@ A web-app dashboard that ingests git repositories and measures per-author, per-f
 
 ## Status
 
-**Phase 6 (performance & polish) built** — awaiting user verification. Phases 1–5 are complete and verified. This README is kept up to date with everything a user needs to know as functionality lands (rule R-2 in SPEC.md section 8).
+**All phases complete and verified.** This README is kept up to date with everything a user needs to know (rule R-2 in SPEC.md section 8).
 
 ## Requirements
 

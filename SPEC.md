@@ -191,7 +191,7 @@ Rules: phases are built in order; **every commit must be working** (builds and r
 - [x] Phase 3 — Filtering & commit sets — built, user-verified, pushed
 - [x] Phase 4 — Authors & merging — built, user-verified, pushed
 - [x] Phase 5 — Remote URL ingestion & multi-repo — built, user-verified, pushed
-- [ ] Phase 6 — Performance & polish — built, user-verified, pushed
+- [x] Phase 6 — Performance & polish — built, user-verified, pushed
 
 ### Phase 1 — Core foundation & repository metrics
 **Goal:** upload a zip → see correct repository-level metrics in a minimal dashboard.
@@ -272,8 +272,8 @@ Rules: phases are built in order; **every commit must be working** (builds and r
 
 **Phase checklist:**
 - [x] Exit criteria met: Git repo (~100k commits) analyzes and browses without long freezes; all FRs checked
-- [ ] Tested and verified by the user — final gate; required before the phase is pushed (rules R-1 and R-3, section 8)
-- [ ] Pushed to `origin main`
+- [x] Tested and verified by the user — final gate; required before the phase is pushed (rules R-1 and R-3, section 8)
+- [x] Pushed to `origin main`
 
 > Implementation notes: `git log` is parsed from stdout as a stream, raw parsed histories are persisted under `server/data/cache/` by repo and `HEAD`, and cache misses can extend an ancestor cache with only new commits. Merged history is cached separately by `HEAD` plus author-merge file version. The client adds empty states, toasts, a per-commit churn trend, directory heatmap tiles, and top-modified child rankings without adding frontend dependencies.
 
