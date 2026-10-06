@@ -60,6 +60,16 @@ async function get<T>(path: string): Promise<TestResponse<T>> {
   return { status: res.status, body };
 }
 
+async function post<T>(path: string, body: unknown): Promise<TestResponse<T>> {
+  const res = await fetch(`${base}/api/repos/${repoId}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const responseBody = (await res.json()) as T;
+  return { status: res.status, body: responseBody };
+}
+
 function childByName(node: TreeNode, name: string): TreeNode {
   const child = node.children?.find((c) => c.name === name);
   if (!child) throw new Error(`expected tree node "${name}" under "${node.path}"`);
@@ -121,6 +131,22 @@ interface CommitsBody {
     added: number;
     removed: number;
   }>;
+}
+
+interface AuthorsBody {
+  authors: Array<{
+    name: string;
+    email: string;
+    key: string;
+    commitCount: number;
+    selectedCommitCount: number;
+    modifications: number;
+    churn: number;
+    ownership: number;
+    aliases: Array<{ key: string }>;
+  }>;
+  identities: Array<{ key: string }>;
+  merges: Array<{ canonical: { key: string }; aliases: Array<{ key: string }> }>;
 }
 
 describe('tree, metrics, and commits endpoints', () => {
@@ -269,14 +295,64 @@ describe('tree, metrics, and commits endpoints', () => {
     expect(body.commits[0]).toMatchObject({ authorName: 'Bob', subject: 'rewrite app, add util' });
   });
 
-  it('lists authors busiest-first with canonical filter keys', async () => {
-    const { status, body } = await get<{
-      authors: Array<{ name: string; email: string; key: string; commitCount: number }>;
-    }>('/authors');
+  it('lists authors with metrics and canonical filter keys', async () => {
+    const { status, body } = await get<AuthorsBody>('/authors?path=src/app.ts');
     expect(status).toBe(200);
-    expect(body.authors).toEqual([
-      { name: 'Alice', email: 'alice@example.com', key: 'Alice <alice@example.com>', commitCount: 2 },
-      { name: 'Bob', email: 'bob@example.com', key: 'Bob <bob@example.com>', commitCount: 1 },
+    expect(body.identities.map((author) => author.key)).toEqual([
+      'Alice <alice@example.com>',
+      'Bob <bob@example.com>',
     ]);
+    expect(body.authors[0]).toMatchObject({
+      name: 'Bob',
+      email: 'bob@example.com',
+      key: 'Bob <bob@example.com>',
+      commitCount: 1,
+      selectedCommitCount: 1,
+      modifications: 1,
+      churn: 22,
+    });
+    expect(body.authors[0].ownership).toBeCloseTo(22 / 32);
+    expect(body.authors[1]).toMatchObject({
+      name: 'Alice',
+      email: 'alice@example.com',
+      key: 'Alice <alice@example.com>',
+      commitCount: 2,
+      selectedCommitCount: 2,
+      modifications: 1,
+      churn: 10,
+    });
+  });
+
+  it('persists a manual author merge and re-aggregates all views', async () => {
+    const merge = await post<AuthorsBody>('/authors/merge', {
+      canonical: 'Alice <alice@example.com>',
+      aliases: ['Bob <bob@example.com>'],
+    });
+    expect(merge.status).toBe(200);
+    expect(merge.body.merges).toMatchObject([
+      {
+        canonical: { key: 'Alice <alice@example.com>' },
+        aliases: [{ key: 'Bob <bob@example.com>' }],
+      },
+    ]);
+    expect(merge.body.authors).toHaveLength(1);
+    expect(merge.body.authors[0]).toMatchObject({
+      key: 'Alice <alice@example.com>',
+      commitCount: 3,
+      selectedCommitCount: 3,
+      churn: 44,
+      ownership: 1,
+    });
+
+    const summary = await get<{ summary: { authorCount: number } }>('/summary');
+    expect(summary.body.summary.authorCount).toBe(1);
+
+    const author = encodeURIComponent('Alice <alice@example.com>');
+    const commits = await get<CommitsBody>(`/commits?author=${author}`);
+    expect(commits.body.total).toBe(3);
+    expect(commits.body.commits[1]).toMatchObject({
+      authorName: 'Alice',
+      subject: 'rewrite app, add util',
+    });
   });
 });

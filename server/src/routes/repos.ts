@@ -3,8 +3,15 @@ import { NextFunction, Request, Response, Router } from 'express';
 import multer from 'multer';
 import { dirs, ensureDataDirs, getRepo, listRepos, removeRepo } from '../services/repoStore.js';
 import { IngestError, ingestZip, sanitizeRepoName } from '../services/ingest.js';
-import { getHistory } from '../services/historyCache.js';
+import { getHistory, getMergedHistory } from '../services/historyCache.js';
 import { CommitSetError, resolveCommitSet, type CommitSetFilter } from '../services/commitSet.js';
+import {
+  applyAuthorMerges,
+  clearAuthorMerges,
+  distinctIdentities,
+  loadAuthorMerges,
+  upsertAuthorMerge,
+} from '../services/authorMerges.js';
 import { listAuthors } from '../services/authors.js';
 import { commitDeltas, computePathMetrics, normalizePath, resolvePathType, type PathType } from '../services/pathMetrics.js';
 import { buildTree } from '../services/tree.js';
@@ -121,21 +128,51 @@ reposRouter.get('/:id/summary', asyncHandler(async (req, res) => {
 reposRouter.get('/:id/authors', asyncHandler(async (req, res) => {
   const repo = requireRepo(req, res);
   if (!repo) return;
-  const history = await getHistory(repo);
-  res.json({ repo: toPublic(repo), authors: listAuthors(history) });
+  const rawHistory = await getHistory(repo);
+  const merges = loadAuthorMerges(repo.id);
+  const history = applyAuthorMerges(rawHistory, merges);
+  const rawPath = typeof req.query.path === 'string' ? req.query.path : '';
+  const authors = listAuthors(
+    history,
+    parseCommitSetFilter(req),
+    rawPath,
+    distinctIdentities(rawHistory.commits),
+    merges,
+  );
+  res.json({ repo: toPublic(repo), ...authors });
+}));
+
+reposRouter.post('/:id/authors/merge', asyncHandler(async (req, res) => {
+  const repo = requireRepo(req, res);
+  if (!repo) return;
+  const rawHistory = await getHistory(repo);
+  const body = req.body as { canonical?: unknown; aliases?: unknown[]; clear?: unknown };
+  if (body.clear === true) {
+    clearAuthorMerges(repo.id);
+  } else {
+    const canonical = typeof body.canonical === 'string' ? body.canonical : '';
+    const aliases = Array.isArray(body.aliases)
+      ? body.aliases.filter((item): item is string => typeof item === 'string')
+      : [];
+    upsertAuthorMerge(repo.id, distinctIdentities(rawHistory.commits), canonical, aliases);
+  }
+  const merges = loadAuthorMerges(repo.id);
+  const history = applyAuthorMerges(rawHistory, merges);
+  const authors = listAuthors(history, {}, '', distinctIdentities(rawHistory.commits), merges);
+  res.json({ repo: toPublic(repo), ...authors });
 }));
 
 reposRouter.get('/:id/tree', asyncHandler(async (req, res) => {
   const repo = requireRepo(req, res);
   if (!repo) return;
-  const history = await getHistory(repo);
+  const history = await getMergedHistory(repo);
   res.json({ repo: toPublic(repo), tree: buildTree(history, repo.name) });
 }));
 
 reposRouter.get('/:id/metrics', asyncHandler(async (req, res) => {
   const repo = requireRepo(req, res);
   if (!repo) return;
-  const history = await getHistory(repo);
+  const history = await getMergedHistory(repo);
   const rawPath = typeof req.query.path === 'string' ? req.query.path : '';
   const metrics = computePathMetrics(history, rawPath, parseCommitSetFilter(req));
   if (!metrics) {
@@ -148,7 +185,7 @@ reposRouter.get('/:id/metrics', asyncHandler(async (req, res) => {
 reposRouter.get('/:id/commits', asyncHandler(async (req, res) => {
   const repo = requireRepo(req, res);
   if (!repo) return;
-  const history = await getHistory(repo);
+  const history = await getMergedHistory(repo);
 
   const rawPath = typeof req.query.path === 'string' ? req.query.path : '';
   const path = normalizePath(rawPath);

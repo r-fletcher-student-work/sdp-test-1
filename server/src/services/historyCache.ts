@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { extractHistory } from './gitLog.js';
+import { applyAuthorMerges, loadAuthorMerges } from './authorMerges.js';
 import { collectPathSets, computeDirAggregates, type DirAggregate } from './metrics.js';
 import type { CommitRecord, RepoMeta } from '../types.js';
 
@@ -54,4 +55,10 @@ export async function getHistory(repo: RepoMeta): Promise<HistoryData> {
   };
   cache.set(repo.id, { head, data });
   return data;
+}
+
+/** Parsed history with persisted manual author merges applied. */
+export async function getMergedHistory(repo: RepoMeta): Promise<HistoryData> {
+  const history = await getHistory(repo);
+  return applyAuthorMerges(history, loadAuthorMerges(repo.id));
 }

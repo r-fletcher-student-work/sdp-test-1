@@ -4,14 +4,15 @@ import type { CommitRecord, FileChange } from '../types.js';
 
 const exec = promisify(execFile);
 
-// %x01 marks a new record; %x1f separates header fields.
-const LOG_FORMAT = '%x01%H%x1f%P%x1f%an%x1f%ae%x1f%ct%x1f%s';
+// %x01 marks a new record; %x1f separates header fields. %aN/%aE apply .mailmap.
+const LOG_FORMAT = '%x01%H%x1f%P%x1f%aN%x1f%aE%x1f%ct%x1f%s';
 
 /**
  * Extract the non-merge history reachable from HEAD as a chronological list of
  * commits with per-file added/removed counts.
  *
  * - merge commits are excluded (--no-merges)
+ * - .mailmap identities are applied (%aN/%aE + --use-mailmap)
  * - binary files are skipped (numstat reports "-" for them)
  * - renames (50% threshold) are attributed to the new path
  * - deletions appear as removed lines on the deleted path
@@ -26,6 +27,7 @@ export async function extractHistory(repoPath: string): Promise<CommitRecord[]> 
       repoPath,
       'log',
       '--no-merges',
+      '--use-mailmap',
       '--numstat',
       '--find-renames=50%',
       '--date-order',

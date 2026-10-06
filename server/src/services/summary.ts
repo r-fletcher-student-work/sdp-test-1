@@ -1,4 +1,4 @@
-import { getHistory } from './historyCache.js';
+import { getMergedHistory } from './historyCache.js';
 import { computeRepoSummary, type RepoSummary } from './metrics.js';
 import { resolveCommitSet, type CommitSetFilter } from './commitSet.js';
 import type { RepoMeta } from '../types.js';
@@ -12,7 +12,7 @@ export async function getRepoSummary(
   repo: RepoMeta,
   filter: CommitSetFilter = {},
 ): Promise<RepoSummary> {
-  const history = await getHistory(repo);
+  const history = await getMergedHistory(repo);
   const subset = resolveCommitSet(history, filter).map((i) => history.commits[i]);
   return computeRepoSummary(subset);
 }

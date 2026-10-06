@@ -63,7 +63,7 @@ export function resolvePathType(history: HistoryData, path: string): PathType | 
  * One commit's added/removed counts scoped to the path (per-commit l+/l-),
  * or null when the commit did not touch the object.
  */
-function perCommitDelta(
+export function perCommitDelta(
   history: HistoryData,
   path: string,
   type: PathType,

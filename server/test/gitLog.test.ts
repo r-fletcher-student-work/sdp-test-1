@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { extractHistory } from '../src/services/gitLog.js';
 import { createFixtureRepo, lines, type FixtureRepo } from './helpers/fixtureRepo.js';
@@ -85,5 +87,36 @@ describe('extractHistory', () => {
 
   it('records text deletions as removed lines and skips binary deletions', () => {
     expect(commits[4].changes).toEqual([{ path: 'nested/deep.txt', added: 0, removed: 4 }]);
+  });
+
+  it('applies .mailmap identities', async () => {
+    const mailmapFixture = createFixtureRepo([
+      {
+        message: 'add mailmap',
+        author: { name: 'Maintainer', email: 'maintainer@example.com' },
+        date: '2024-01-01T00:00:00+00:00',
+        files: [
+          {
+            path: '.mailmap',
+            content: 'Alice <alice@example.com> A. Liddell <alice@users.noreply.github.com>\n',
+          },
+        ],
+      },
+      {
+        message: 'alias commit',
+        author: { name: 'A. Liddell', email: 'alice@users.noreply.github.com' },
+        date: '2024-01-02T00:00:00+00:00',
+        files: [{ path: 'aliased.txt', content: lines(1, 2) }],
+      },
+    ]);
+    try {
+      // Older git versions may need the mailmap checked out and committed; this
+      // keeps the fixture explicit even if git does not auto-track test writes.
+      expect(fs.existsSync(path.join(mailmapFixture.path, '.mailmap'))).toBe(true);
+      const history = await extractHistory(mailmapFixture.path);
+      expect(history[1]).toMatchObject({ authorName: 'Alice', authorEmail: 'alice@example.com' });
+    } finally {
+      mailmapFixture.cleanup();
+    }
   });
 });
