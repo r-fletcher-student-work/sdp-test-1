@@ -182,16 +182,16 @@ l-(h,d) = Σ l-(h,f) + Σ l-(h,d′)
 
 ## 6. Build Phases (prioritized, cumulative)
 
-Rules: phases are built in order; **every commit must be working** (builds and runs); **each phase ends with a `git push`**; **each phase is tested and verified by the user before the next phase begins** (rule R-1, section 8). Priority maps onto the brief's cumulative rubric tiers (see 6.7).
+Rules: phases are built in order; **every commit must be working** (builds and runs); **each phase is tested and verified by the user first** (rule R-1, section 8) and **only then pushed to `origin main`** (rule R-3, section 8) — the push closes the phase and opens the next. Priority maps onto the brief's cumulative rubric tiers (see 6.7).
 
 ### 6.0 Progress tracker (update as work completes)
 
-- [x] Phase 1 — Core foundation & repository metrics — built, pushed, user-verified
-- [ ] Phase 2 — Directory metrics & file drill-down — built, pushed, user-verified
-- [ ] Phase 3 — Filtering & commit sets — built, pushed, user-verified
-- [ ] Phase 4 — Authors & merging — built, pushed, user-verified
-- [ ] Phase 5 — Remote URL ingestion & multi-repo — built, pushed, user-verified
-- [ ] Phase 6 — Performance & polish — built, pushed, user-verified
+- [x] Phase 1 — Core foundation & repository metrics — built, user-verified, pushed
+- [ ] Phase 2 — Directory metrics & file drill-down — built, user-verified, pushed
+- [ ] Phase 3 — Filtering & commit sets — built, user-verified, pushed
+- [ ] Phase 4 — Authors & merging — built, user-verified, pushed
+- [ ] Phase 5 — Remote URL ingestion & multi-repo — built, user-verified, pushed
+- [ ] Phase 6 — Performance & polish — built, user-verified, pushed
 
 ### Phase 1 — Core foundation & repository metrics
 **Goal:** upload a zip → see correct repository-level metrics in a minimal dashboard.
@@ -206,8 +206,8 @@ Rules: phases are built in order; **every commit must be working** (builds and r
 
 **Phase checklist:**
 - [x] Exit criteria met: `npm run build` green at root; upload → dashboard works end-to-end; tests pass
+- [x] Tested and verified by the user — required before the phase is pushed (rules R-1 and R-3, section 8)
 - [x] Pushed to `origin main`
-- [x] Tested and verified by the user — required before Phase 2 starts (rule R-1, section 8)
 
 ### Phase 2 — Directory metrics & file drill-down
 **Goal:** explore any directory or file and see correct metrics.
@@ -219,8 +219,8 @@ Rules: phases are built in order; **every commit must be working** (builds and r
 
 **Phase checklist:**
 - [x] Exit criteria met: repo → directory → file navigation shows consistent, correct numbers
+- [ ] Tested and verified by the user — required before the phase is pushed (rules R-1 and R-3, section 8)
 - [x] Pushed to `origin main`
-- [ ] Tested and verified by the user — required before Phase 3 starts (rule R-1, section 8)
 
 ### Phase 3 — Filtering & commit sets
 **Goal:** every metric view respects a composable filter set.
@@ -231,8 +231,8 @@ Rules: phases are built in order; **every commit must be working** (builds and r
 
 **Phase checklist:**
 - [ ] Exit criteria met: filters combine correctly (e.g., author + path + period) across views
+- [ ] Tested and verified by the user — required before the phase is pushed (rules R-1 and R-3, section 8)
 - [ ] Pushed to `origin main`
-- [ ] Tested and verified by the user — required before Phase 4 starts (rule R-1, section 8)
 
 ### Phase 4 — Authors & merging
 **Goal:** author-centric analytics with identity merging.
@@ -243,8 +243,8 @@ Rules: phases are built in order; **every commit must be working** (builds and r
 
 **Phase checklist:**
 - [ ] Exit criteria met: mailmap + manual merges change author metrics everywhere consistently
+- [ ] Tested and verified by the user — required before the phase is pushed (rules R-1 and R-3, section 8)
 - [ ] Pushed to `origin main`
-- [ ] Tested and verified by the user — required before Phase 5 starts (rule R-1, section 8)
 
 ### Phase 5 — Remote URL ingestion & multi-repo
 **Goal:** both ingestion forms and multi-repo workflows complete.
@@ -254,8 +254,8 @@ Rules: phases are built in order; **every commit must be working** (builds and r
 
 **Phase checklist:**
 - [ ] Exit criteria met: can clone cJSON/Redis/Git URLs, switch between repos, compare
+- [ ] Tested and verified by the user — required before the phase is pushed (rules R-1 and R-3, section 8)
 - [ ] Pushed to `origin main`
-- [ ] Tested and verified by the user — required before Phase 6 starts (rule R-1, section 8)
 
 ### Phase 6 — Performance & polish
 **Goal:** fast on ~100k-commit repos; polished, inspired UX.
@@ -266,8 +266,8 @@ Rules: phases are built in order; **every commit must be working** (builds and r
 
 **Phase checklist:**
 - [ ] Exit criteria met: Git repo (~100k commits) analyzes and browses without long freezes; all FRs checked
+- [ ] Tested and verified by the user — final gate; required before the phase is pushed (rules R-1 and R-3, section 8)
 - [ ] Pushed to `origin main`
-- [ ] Tested and verified by the user — final gate; marks the project complete (rule R-1, section 8)
 
 ### 6.7 Rubric traceability
 
@@ -284,8 +284,8 @@ Rules: phases are built in order; **every commit must be working** (builds and r
 
 - **Commits:** small, conventional (`feat:`, `fix:`, `chore:`, `docs:`, `test:`), one logical unit per commit, committed after each working unit — never in bulk at phase end.
 - **Green-only commits:** before every commit, the root build (`npm run build` for client + server) must pass and the app must start; Vitest suite must pass. No broken or partially-working code is ever committed.
-- **Pushes:** `git push` to `origin main` at the **end of each phase** (after its exit criteria are met).
-- **User verification (R-1):** after the push, the agent stops and the user tests and verifies the phase; only explicit user approval opens the next phase (see section 8).
+- **User verification (R-1):** after the phase's exit criteria are met, the agent stops and the user tests and verifies the phase; only explicit user approval opens the next phase (see section 8).
+- **Pushes (R-3):** `git push` to `origin main` happens **only after the user has tested and verified the phase** — never before verification. The push closes the phase and opens the next.
 - **Docs (R-2):** README.md is updated in the same phase whenever user-facing behavior, commands, or requirements change.
 - **SPEC.md** itself is committed as the first commit before Phase 1 work begins.
 - If a unit turns out larger than one green commit, split it; if it can't be finished green, it is finished before moving on.
@@ -296,9 +296,11 @@ Rules: phases are built in order; **every commit must be working** (builds and r
 
 Any agent working in this repository (Qoder or otherwise) MUST read this section before starting or resuming any work, MUST re-check it before each commit and before starting any new phase, and MUST follow every rule below. Rules in this section take precedence over the spec's default workflow. When the user specifies a new rule, append it here with the next `R-n` id; never delete or silently weaken an existing rule.
 
-- **R-1 — User verification gate:** Each phase must be tested and verified by the user before moving on to the next phase. After a phase's exit criteria are met and it is pushed, the agent must stop and ask the user to test and verify; the next phase may only start after the user explicitly approves. Record approval by ticking the phase's "Tested and verified by the user" checkbox and the phase entry in the progress tracker (6.0).
+- **R-1 — User verification gate:** Each phase must be tested and verified by the user before moving on to the next phase. After a phase's exit criteria are met, the agent must stop and ask the user to test and verify; the phase is pushed to `origin main` only after the user explicitly approves (see R-3), and the next phase may only start after that push. Record approval by ticking the phase's "Tested and verified by the user" checkbox and the phase entry in the progress tracker (6.0).
 
 - **R-2 — README accuracy:** README.md must always describe what a cloner/user needs to know to run and use the app correctly. Update it in the same phase whenever user-facing behavior, commands, or requirements change.
+
+- **R-3 — Push only after verification:** a phase is pushed to `origin main` only after the user has tested and verified it. Never push a phase that has not passed user verification; the push happens immediately after the user's explicit approval and marks the phase complete.
 
 ## 9. Assumptions & Non-Goals
 

@@ -19,14 +19,15 @@ This file orients any AI agent (Qoder or otherwise) working in this repository. 
 
 ## Binding rules (summary — full text in SPEC.md section 8)
 
-- **R-1 — User verification gate:** after a phase's exit criteria are met and it is pushed, STOP and ask the user to test and verify. The next phase starts only after explicit user approval.
+- **R-1 — User verification gate:** after a phase's exit criteria are met, STOP and ask the user to test and verify. The phase is pushed only after explicit user approval (R-3); the next phase starts only after that push.
 - **R-2 — README accuracy:** update README.md in the same phase whenever user-facing behavior, commands, or requirements change.
+- **R-3 — Push only after verification:** never push a phase that has not passed user verification; push to `origin main` immediately after the user's explicit approval.
 
 ## Workflow rules (SPEC.md section 7)
 
 - Small, conventional commits (`feat:`, `fix:`, `chore:`, `docs:`, `test:`) after each working unit — never in bulk at phase end.
 - **Green-only commits:** before every commit, `npm run build` (root, builds client + server) must pass and the Vitest suite must pass. No broken code is ever committed.
-- Push to `origin main` at the end of each phase.
+- Push to `origin main` only after the user has tested and verified the phase (rules R-1/R-3 in SPEC section 8).
 - Keep the SPEC checklists up to date: tick items in section 5 (FRs), section 6.0 (tracker), and the per-phase checklists as soon as they are done.
 
 ## Tech stack (confirmed with the user)
