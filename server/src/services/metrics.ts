@@ -24,6 +24,12 @@ export interface RepoSummary {
   firstCommitDate: number | null;
   lastCommitDate: number | null;
   totals: Totals;
+  /** modifications n(H, root): commits in the set whose churn is > 0 */
+  modifications: number;
+  /** modification frequency η = n/|H| (0 when |H| = 0) */
+  frequency: number;
+  /** churn rate ρ = λ(H, root)/|H| (0 when |H| = 0) */
+  churnRate: number;
   /**
    * Cumulative series for the chart, chronological. Sampled to at most
    * CHART_MAX_POINTS points on very large histories — cumulative values stay
@@ -31,6 +37,11 @@ export interface RepoSummary {
    * commits endpoint from Phase 2.
    */
   timeseries: CommitPoint[];
+}
+
+/** SPEC division semantics: 0 when the commit set is empty. */
+export function ratio(numerator: number, denominator: number): number {
+  return denominator === 0 ? 0 : numerator / denominator;
 }
 
 /** Chart payload cap — keeps the browser chart responsive on ~100k-commit repos. */
@@ -61,6 +72,7 @@ export function computeRepoSummary(commits: CommitRecord[]): RepoSummary {
   const filePaths = new Set<string>();
   const totals: Totals = { added: 0, removed: 0, growth: 0, churn: 0 };
   const timeseries: CommitPoint[] = [];
+  let modifications = 0;
 
   for (const commit of commits) {
     authorKeys.add(`${commit.authorName} <${commit.authorEmail}>`);
@@ -74,6 +86,7 @@ export function computeRepoSummary(commits: CommitRecord[]): RepoSummary {
     }
     const growth = added - removed;
     const churn = added + removed;
+    if (churn > 0) modifications++; // 1[λ(h,o) > 0]
 
     totals.added += added;
     totals.removed += removed;
@@ -102,6 +115,9 @@ export function computeRepoSummary(commits: CommitRecord[]): RepoSummary {
     firstCommitDate: commits.length > 0 ? commits[0].committerDate : null,
     lastCommitDate: commits.length > 0 ? commits[commits.length - 1].committerDate : null,
     totals,
+    modifications,
+    frequency: ratio(modifications, commits.length),
+    churnRate: ratio(totals.churn, commits.length),
     timeseries: downsampleSeries(timeseries, CHART_MAX_POINTS),
   };
 }

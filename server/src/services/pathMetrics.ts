@@ -3,9 +3,11 @@ import type { HistoryData } from './historyCache.js';
 import {
   CHART_MAX_POINTS,
   downsampleSeries,
+  ratio,
   type CommitPoint,
   type Totals,
 } from './metrics.js';
+import { resolveCommitSet, type CommitSetFilter } from './commitSet.js';
 
 export type PathType = 'file' | 'dir';
 
@@ -27,8 +29,14 @@ export interface PathMetrics {
   path: string;
   type: PathType;
   totals: Totals;
-  /** modifications n(H,o): commits whose churn on the object is > 0 */
+  /** modifications n(H,o): commits in the active set whose churn on the object is > 0 */
   modifications: number;
+  /** size of the active commit set |H| (time range or manual selection ∩ author) */
+  commitSetSize: number;
+  /** modification frequency η = n/|H| (0 when |H| = 0) */
+  frequency: number;
+  /** churn rate ρ = λ(H,o)/|H| (0 when |H| = 0) */
+  churnRate: number;
   /**
    * Cumulative chronological series scoped to the path, sampled to at most
    * CHART_MAX_POINTS points (cumulative values exact at every plotted point).
@@ -73,21 +81,27 @@ function perCommitDelta(
 }
 
 /**
- * Metrics for one object (file, directory, or root) over the full-history
- * commit set H: totals, modifications n(H,o), cumulative series, and — for
- * directories — immediate-children aggregates (own + recursive children).
+ * Metrics for one object (file, directory, or root) over the active commit
+ * set H (defaults to the full history): totals, modifications n(H,o),
+ * frequencies η/ρ, cumulative series, and — for directories —
+ * immediate-children aggregates (own + recursive children).
  */
-export function computePathMetrics(history: HistoryData, rawPath: string): PathMetrics | null {
+export function computePathMetrics(
+  history: HistoryData,
+  rawPath: string,
+  filter: CommitSetFilter = {},
+): PathMetrics | null {
   const path = normalizePath(rawPath);
   const type = resolvePathType(history, path);
   if (!type) return null;
 
+  const indices = resolveCommitSet(history, filter);
   const { commits } = history;
   const totals: Totals = { added: 0, removed: 0, growth: 0, churn: 0 };
   let modifications = 0;
   const series: CommitPoint[] = [];
 
-  for (let i = 0; i < commits.length; i++) {
+  for (const i of indices) {
     const delta = perCommitDelta(history, path, type, i);
     if (!delta) continue; // commit did not touch the object — no series point
     const growth = delta.added - delta.removed;
@@ -112,12 +126,15 @@ export function computePathMetrics(history: HistoryData, rawPath: string): PathM
     });
   }
 
-  const children = type === 'dir' ? computeChildren(history, path) : [];
+  const children = type === 'dir' ? computeChildren(history, path, indices) : [];
   return {
     path,
     type,
     totals,
     modifications,
+    commitSetSize: indices.length,
+    frequency: ratio(modifications, indices.length),
+    churnRate: ratio(totals.churn, indices.length),
     timeseries: downsampleSeries(series, CHART_MAX_POINTS),
     children,
   };
@@ -136,10 +153,10 @@ interface MutableChild {
 
 /**
  * Immediate children of a directory with their recursive totals (directory
- * children reuse the memoized per-commit aggregates). Sorted dirs-first,
- * then by name.
+ * children reuse the memoized per-commit aggregates), scoped to the commit
+ * set given by `indices`. Sorted dirs-first, then by name.
  */
-function computeChildren(history: HistoryData, dirPath: string): ChildMetric[] {
+function computeChildren(history: HistoryData, dirPath: string, indices: number[]): ChildMetric[] {
   const prefix = dirPath === '' ? '' : `${dirPath}/`;
   const children = new Map<string, MutableChild>();
   const touchedInCommit = new Set<MutableChild>();
@@ -166,7 +183,7 @@ function computeChildren(history: HistoryData, dirPath: string): ChildMetric[] {
     touchedInCommit.add(child);
   };
 
-  for (let i = 0; i < history.commits.length; i++) {
+  for (const i of indices) {
     for (const change of history.commits[i].changes) {
       if (!change.path.startsWith(prefix)) continue;
       const rest = change.path.slice(prefix.length);
@@ -204,15 +221,18 @@ function computeChildren(history: HistoryData, dirPath: string): ChildMetric[] {
 
 /**
  * Commits that touched the path, chronological, with their per-commit
- * deltas (drives the commits list endpoint).
+ * deltas (drives the commits list endpoint). When `indices` is given, only
+ * commits of that active commit set are considered.
  */
 export function commitDeltas(
   history: HistoryData,
   path: string,
   type: PathType,
+  indices?: number[],
 ): Array<{ commit: CommitRecord; added: number; removed: number }> {
   const deltas: Array<{ commit: CommitRecord; added: number; removed: number }> = [];
-  for (let i = 0; i < history.commits.length; i++) {
+  const order = indices ?? history.commits.map((_, i) => i);
+  for (const i of order) {
     const delta = perCommitDelta(history, path, type, i);
     if (delta) deltas.push({ commit: history.commits[i], ...delta });
   }

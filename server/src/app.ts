@@ -3,6 +3,7 @@ import cors from 'cors';
 import { MulterError } from 'multer';
 import { reposRouter } from './routes/repos.js';
 import { IngestError } from './services/ingest.js';
+import { CommitSetError } from './services/commitSet.js';
 
 export function createApp(): Express {
   const app = express();
@@ -22,6 +23,7 @@ export function createApp(): Express {
   const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     let status = 500;
     if (err instanceof IngestError) status = err.status;
+    else if (err instanceof CommitSetError) status = 400;
     else if (err instanceof MulterError) status = 400;
     const message = err instanceof Error ? err.message : 'Internal server error';
     if (status >= 500) {

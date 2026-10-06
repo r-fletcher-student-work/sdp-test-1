@@ -26,6 +26,9 @@ describe('computeRepoSummary', () => {
       }),
     ]);
     expect(summary.totals).toEqual({ added: 12, removed: 5, growth: 7, churn: 17 });
+    expect(summary.modifications).toBe(2);
+    expect(summary.frequency).toBe(1);
+    expect(summary.churnRate).toBe(8.5);
     expect(summary.timeseries[0]).toMatchObject({ growth: 10, churn: 10, cumGrowth: 10, cumChurn: 10 });
     expect(summary.timeseries[1]).toMatchObject({ growth: -3, churn: 7, cumGrowth: 7, cumChurn: 17 });
   });
@@ -119,6 +122,9 @@ describe('computeRepoSummary', () => {
       firstCommitDate: null,
       lastCommitDate: null,
       totals: { added: 0, removed: 0, growth: 0, churn: 0 },
+      modifications: 0,
+      frequency: 0,
+      churnRate: 0,
       timeseries: [],
     });
   });

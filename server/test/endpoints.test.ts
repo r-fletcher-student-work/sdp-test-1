@@ -86,6 +86,9 @@ interface MetricsBody {
     type: 'file' | 'dir';
     totals: { added: number; removed: number; growth: number; churn: number };
     modifications: number;
+    commitSetSize: number;
+    frequency: number;
+    churnRate: number;
     timeseries: unknown[];
     children: Array<{
       name: string;
@@ -95,6 +98,16 @@ interface MetricsBody {
       removed: number;
       modifications: number;
     }>;
+  };
+}
+
+interface SummaryBody {
+  summary: {
+    commitCount: number;
+    totals: { added: number; removed: number; growth: number; churn: number };
+    modifications: number;
+    frequency: number;
+    churnRate: number;
   };
 }
 
@@ -208,5 +221,62 @@ describe('tree, metrics, and commits endpoints', () => {
     const { status, body } = await get<CommitsBody>('/commits?limit=99999');
     expect(status).toBe(200);
     expect(body.commits.length).toBe(3); // capped at MAX_COMMIT_LIMIT, total is 3
+  });
+
+  it('scopes summary metrics to a time range', async () => {
+    // 2024-02-01T00:00:00Z .. 2024-03-01T00:00:00Z selects only c2
+    const { status, body } = await get<SummaryBody>('/summary?from=1706745600&to=1709251200');
+    expect(status).toBe(200);
+    expect(body.summary.commitCount).toBe(1);
+    expect(body.summary.totals).toEqual({ added: 16, removed: 10, growth: 6, churn: 26 });
+    expect(body.summary.modifications).toBe(1);
+    expect(body.summary.frequency).toBe(1);
+    expect(body.summary.churnRate).toBe(26);
+  });
+
+  it('scopes metrics to an author', async () => {
+    const author = encodeURIComponent('Alice <alice@example.com>');
+    const { status, body } = await get<MetricsBody>(`/metrics?path=src&author=${author}`);
+    expect(status).toBe(200);
+    expect(body.metrics.totals).toEqual({ added: 15, removed: 0, growth: 15, churn: 15 });
+    expect(body.metrics.modifications).toBe(2);
+    expect(body.metrics.commitSetSize).toBe(2);
+    expect(body.metrics.frequency).toBe(1);
+    expect(body.metrics.churnRate).toBe(7.5);
+  });
+
+  it('resolves a manual commit selection on the metrics endpoint', async () => {
+    const newest = await get<CommitsBody>('/commits?limit=1');
+    const hash = newest.body.commits[0].hash; // c3
+    const { status, body } = await get<MetricsBody>(`/metrics?commits=${hash}`);
+    expect(status).toBe(200);
+    expect(body.metrics.totals).toEqual({ added: 5, removed: 0, growth: 5, churn: 5 });
+    expect(body.metrics.commitSetSize).toBe(1);
+    expect(body.metrics.modifications).toBe(1);
+  });
+
+  it('rejects unknown commit hashes with a clear error', async () => {
+    const { status, body } = await get<{ error: string }>('/summary?commits=ffffffffffffffff');
+    expect(status).toBe(400);
+    expect(body.error).toContain('Unknown commit hash');
+  });
+
+  it('scopes the commit list to an author', async () => {
+    const author = encodeURIComponent('Bob <bob@example.com>');
+    const { status, body } = await get<CommitsBody>(`/commits?author=${author}`);
+    expect(status).toBe(200);
+    expect(body.total).toBe(1);
+    expect(body.commits[0]).toMatchObject({ authorName: 'Bob', subject: 'rewrite app, add util' });
+  });
+
+  it('lists authors busiest-first with canonical filter keys', async () => {
+    const { status, body } = await get<{
+      authors: Array<{ name: string; email: string; key: string; commitCount: number }>;
+    }>('/authors');
+    expect(status).toBe(200);
+    expect(body.authors).toEqual([
+      { name: 'Alice', email: 'alice@example.com', key: 'Alice <alice@example.com>', commitCount: 2 },
+      { name: 'Bob', email: 'bob@example.com', key: 'Bob <bob@example.com>', commitCount: 1 },
+    ]);
   });
 });

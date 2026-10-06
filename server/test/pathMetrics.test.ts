@@ -65,38 +65,38 @@ describe('computeDirAggregates', () => {
   });
 });
 
-describe('computePathMetrics', () => {
-  const commits: CommitRecord[] = [
-    commit({
-      hash: 'c1',
-      committerDate: 100,
-      subject: 'add app',
-      changes: [
-        { path: 'src/app.ts', added: 10, removed: 0 },
-        { path: 'README.md', added: 3, removed: 0 },
-      ],
-    }),
-    commit({
-      hash: 'c2',
-      parent: 'c1',
-      committerDate: 200,
-      authorName: 'Bob',
-      authorEmail: 'bob@example.com',
-      subject: 'lib',
-      changes: [
-        { path: 'src/lib/util.ts', added: 4, removed: 0 },
-        { path: 'src/app.ts', added: 2, removed: 5 },
-      ],
-    }),
-    commit({
-      hash: 'c3',
-      parent: 'c2',
-      committerDate: 300,
-      subject: 'deep helper',
-      changes: [{ path: 'src/lib/deep/helper.ts', added: 5, removed: 0 }],
-    }),
-  ];
+const commits: CommitRecord[] = [
+  commit({
+    hash: 'c1',
+    committerDate: 100,
+    subject: 'add app',
+    changes: [
+      { path: 'src/app.ts', added: 10, removed: 0 },
+      { path: 'README.md', added: 3, removed: 0 },
+    ],
+  }),
+  commit({
+    hash: 'c2',
+    parent: 'c1',
+    committerDate: 200,
+    authorName: 'Bob',
+    authorEmail: 'bob@example.com',
+    subject: 'lib',
+    changes: [
+      { path: 'src/lib/util.ts', added: 4, removed: 0 },
+      { path: 'src/app.ts', added: 2, removed: 5 },
+    ],
+  }),
+  commit({
+    hash: 'c3',
+    parent: 'c2',
+    committerDate: 300,
+    subject: 'deep helper',
+    changes: [{ path: 'src/lib/deep/helper.ts', added: 5, removed: 0 }],
+  }),
+];
 
+describe('computePathMetrics', () => {
   it('aggregates a directory recursively with immediate-children breakdown', () => {
     const metrics = computePathMetrics(history(commits), 'src');
     expect(metrics).not.toBeNull();
@@ -189,5 +189,55 @@ describe('computePathMetrics', () => {
     const last = metrics!.timeseries[metrics!.timeseries.length - 1];
     expect(last.cumAdded).toBe(2000);
     expect(last.hash).toBe('c1999');
+  });
+});
+
+describe('computePathMetrics with commit-set filters', () => {
+  const h = history(commits);
+
+  it('scopes totals, modifications and frequencies to the author filter', () => {
+    const metrics = computePathMetrics(h, 'src', { author: 'Bob <bob@example.com>' })!;
+    expect(metrics.totals).toEqual({ added: 6, removed: 5, growth: 1, churn: 11 });
+    expect(metrics.modifications).toBe(1);
+    expect(metrics.commitSetSize).toBe(1);
+    expect(metrics.frequency).toBe(1);
+    expect(metrics.churnRate).toBe(11);
+    expect(metrics.timeseries).toHaveLength(1);
+    // 'src' is a directory: c2's delta sums util.ts (+4/-0) and app.ts (+2/-5)
+    expect(metrics.timeseries[0]).toMatchObject({ hash: 'c2', added: 6, removed: 5 });
+  });
+
+  it('applies the time range to the object and its children', () => {
+    const root = computePathMetrics(h, '', { from: 150, to: 250 })!; // only c2
+    expect(root.commitSetSize).toBe(1);
+    expect(root.totals).toEqual({ added: 6, removed: 5, growth: 1, churn: 11 });
+    expect(root.children.map((child) => child.path)).toEqual(['src']);
+    expect(root.children[0]).toMatchObject({ added: 6, removed: 5, modifications: 1 });
+
+    const src = computePathMetrics(h, 'src', { from: 150, to: 250 })!;
+    expect(src.children.map((child) => `${child.type}:${child.name}`)).toEqual([
+      'dir:lib',
+      'file:app.ts',
+    ]);
+    expect(src.children[1]).toMatchObject({ added: 2, removed: 5, modifications: 1 });
+  });
+
+  it('resolves a manual hash selection', () => {
+    const metrics = computePathMetrics(h, '', { hashes: ['c1', 'c3'] })!;
+    expect(metrics.commitSetSize).toBe(2);
+    expect(metrics.totals).toEqual({ added: 18, removed: 0, growth: 18, churn: 18 });
+    expect(metrics.modifications).toBe(2);
+    expect(metrics.frequency).toBe(1);
+  });
+
+  it('returns zeros for an empty commit set per the brief', () => {
+    const metrics = computePathMetrics(h, 'src', { author: 'Nobody <nobody@example.com>' })!;
+    expect(metrics.commitSetSize).toBe(0);
+    expect(metrics.totals).toEqual({ added: 0, removed: 0, growth: 0, churn: 0 });
+    expect(metrics.modifications).toBe(0);
+    expect(metrics.frequency).toBe(0);
+    expect(metrics.churnRate).toBe(0);
+    expect(metrics.children).toEqual([]);
+    expect(metrics.timeseries).toEqual([]);
   });
 });

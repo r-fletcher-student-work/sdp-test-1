@@ -4,6 +4,8 @@ import multer from 'multer';
 import { dirs, ensureDataDirs, getRepo, listRepos, removeRepo } from '../services/repoStore.js';
 import { IngestError, ingestZip, sanitizeRepoName } from '../services/ingest.js';
 import { getHistory } from '../services/historyCache.js';
+import { CommitSetError, resolveCommitSet, type CommitSetFilter } from '../services/commitSet.js';
+import { listAuthors } from '../services/authors.js';
 import { commitDeltas, computePathMetrics, normalizePath, resolvePathType, type PathType } from '../services/pathMetrics.js';
 import { buildTree } from '../services/tree.js';
 import { getRepoSummary } from '../services/summary.js';
@@ -58,6 +60,34 @@ function parseOffsetParam(value: unknown): number {
 const DEFAULT_COMMIT_LIMIT = 100;
 const MAX_COMMIT_LIMIT = 500;
 
+/** Upper bound on manually selected commits per request (URL length guard). */
+const MAX_SELECTED_COMMITS = 5000;
+
+/**
+ * Commit-set filters from the query string: `from`/`to` (unix seconds),
+ * `commits` (comma-separated full hashes or unique prefixes), and `author`
+ * ('Name <email>'). Malformed numbers are ignored; bad hash selections throw
+ * CommitSetError (mapped to 400 by the error handler).
+ */
+function parseCommitSetFilter(req: Request): CommitSetFilter {
+  const filter: CommitSetFilter = {};
+  const from = Number.parseInt(String(req.query.from ?? ''), 10);
+  if (Number.isFinite(from) && from >= 0) filter.from = from;
+  const to = Number.parseInt(String(req.query.to ?? ''), 10);
+  if (Number.isFinite(to) && to >= 0) filter.to = to;
+  const rawCommits = typeof req.query.commits === 'string' ? req.query.commits : '';
+  const hashes = rawCommits.split(',').map((hash) => hash.trim()).filter(Boolean);
+  if (hashes.length > MAX_SELECTED_COMMITS) {
+    throw new CommitSetError(
+      `Too many selected commits (${hashes.length}); the maximum is ${MAX_SELECTED_COMMITS}.`,
+    );
+  }
+  if (hashes.length > 0) filter.hashes = hashes;
+  const author = typeof req.query.author === 'string' ? req.query.author.trim() : '';
+  if (author) filter.author = author;
+  return filter;
+}
+
 reposRouter.get('/', (_req, res) => {
   res.json(listRepos().map(toPublic));
 });
@@ -84,8 +114,15 @@ reposRouter.post(
 reposRouter.get('/:id/summary', asyncHandler(async (req, res) => {
   const repo = requireRepo(req, res);
   if (!repo) return;
-  const summary = await getRepoSummary(repo);
+  const summary = await getRepoSummary(repo, parseCommitSetFilter(req));
   res.json({ repo: toPublic(repo), summary });
+}));
+
+reposRouter.get('/:id/authors', asyncHandler(async (req, res) => {
+  const repo = requireRepo(req, res);
+  if (!repo) return;
+  const history = await getHistory(repo);
+  res.json({ repo: toPublic(repo), authors: listAuthors(history) });
 }));
 
 reposRouter.get('/:id/tree', asyncHandler(async (req, res) => {
@@ -100,7 +137,7 @@ reposRouter.get('/:id/metrics', asyncHandler(async (req, res) => {
   if (!repo) return;
   const history = await getHistory(repo);
   const rawPath = typeof req.query.path === 'string' ? req.query.path : '';
-  const metrics = computePathMetrics(history, rawPath);
+  const metrics = computePathMetrics(history, rawPath, parseCommitSetFilter(req));
   if (!metrics) {
     res.status(400).json({ error: `Path not found in repository history: ${rawPath}` });
     return;
@@ -124,7 +161,8 @@ reposRouter.get('/:id/commits', asyncHandler(async (req, res) => {
   const limit = parseIntParam(req.query.limit, DEFAULT_COMMIT_LIMIT, MAX_COMMIT_LIMIT);
   const offset = parseOffsetParam(req.query.offset);
 
-  const deltas = commitDeltas(history, path, type);
+  const filter = parseCommitSetFilter(req);
+  const deltas = commitDeltas(history, path, type, resolveCommitSet(history, filter));
   const total = deltas.length;
   // Newest-first page: offsets count back from the newest commit.
   const start = Math.max(0, total - offset - limit);
