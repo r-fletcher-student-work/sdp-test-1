@@ -238,15 +238,17 @@ Rules: phases are built in order; **every commit must be working** (builds and r
 
 ### Phase 4 — Authors & merging
 **Goal:** author-centric analytics with identity merging.
-- [ ] 1. `.mailmap` support: parse with mailmap-applied identities.
-- [ ] 2. `GET /api/repos/:id/authors`; author table with their metrics (modifications, churn, ownership) per selected object/set.
-- [ ] 3. Manual merge UI: select identities → merge into canonical author; mapping persisted per repo; all views re-aggregate.
-- [ ] 4. Author ownership visualization (e.g., ownership bars per file/directory).
+- [x] 1. `.mailmap` support: parse with mailmap-applied identities.
+- [x] 2. `GET /api/repos/:id/authors`; author table with their metrics (modifications, churn, ownership) per selected object/set.
+- [x] 3. Manual merge UI: select identities → merge into canonical author; mapping persisted per repo; all views re-aggregate.
+- [x] 4. Author ownership visualization (e.g., ownership bars per file/directory).
 
 **Phase checklist:**
-- [ ] Exit criteria met: mailmap + manual merges change author metrics everywhere consistently
+- [x] Exit criteria met: mailmap + manual merges change author metrics everywhere consistently
 - [ ] Tested and verified by the user — required before the phase is pushed (rules R-1 and R-3, section 8)
 - [ ] Pushed to `origin main`
+
+> Implementation notes: `git log` uses `.mailmap`-aware `%aN/%aE` identities with `--use-mailmap`. Manual merges are persisted per repo under `server/data/author-merges/` and applied to all metric endpoints at read time; raw/mailmapped identities remain available for future merge edits. The Metrics area has Files/Authors tabs; Authors is paginated and respects the active author filter.
 
 ### Phase 5 — Remote URL ingestion & multi-repo
 **Goal:** both ingestion forms and multi-repo workflows complete.

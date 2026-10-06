@@ -8,7 +8,7 @@ A web-app dashboard that ingests git repositories and measures per-author, per-f
 
 ## Status
 
-**Phase 3 (filtering & commit sets) built** — awaiting user verification (see the progress tracker in SPEC.md section 6.0). Phases 1–2 are complete and verified. This README is kept up to date with everything a user needs to know as functionality lands (rule R-2 in SPEC.md section 8).
+**Phase 4 (authors & merging) built** — awaiting user verification (see the progress tracker in SPEC.md section 6.0). Phases 1–3 are complete and verified. This README is kept up to date with everything a user needs to know as functionality lands (rule R-2 in SPEC.md section 8).
 
 ## Requirements
 
@@ -42,14 +42,16 @@ npm test        # Vitest suite (parser + metric engine)
    - **File tree sidebar** — every path ever touched in the history. Click a directory or file for its own stat cards (including |H|, η, ρ), path-scoped chart, children breakdown (directories) or per-commit deltas (files).
    - **Commits tab** — the non-merge commit list, newest first, paginated 100 per page. Tick rows to select commits for the filter.
 3. **Filter everything** — the filter bar applies a date range, author, and/or a manual commit selection (it overrides the dates) to every metric, chart, and the commit list. Filter state lives in the URL; 'Reset filters' clears it.
-4. **Manage repositories** — remove a repository from the list (its extracted data is deleted from the server).
+4. **Review authors** — use the Authors tab for paginated commits, modifications, churn, and ownership.
+5. **Merge identities** — tick identities, choose the canonical author, and merge. `.mailmap` is applied automatically; manual merges persist per repo.
+6. **Manage repositories** — remove a repository from the list (its extracted data is deleted from the server).
 
 ### Known limits (by phase)
 
 - The first analysis of a very large repository (e.g., ~100k commits, like Git) takes a little while; results are cached in memory per HEAD state. Persistent incremental caching and streaming analysis arrive in Phase 6.
 - Only zip upload is available; remote URL ingestion arrives in Phase 5.
 - Manual commit selections are capped at 5000 hashes per selection (URL length guard); unknown or ambiguous hash prefixes are rejected with a clear error.
-- Author merging arrives in Phase 4; multi-repo comparison in Phase 5; visual polish (treemaps/heatmaps, top-volatile rankings) in Phase 6.
+- Multi-repo comparison arrives in Phase 5; visual polish (treemaps/heatmaps, top-volatile rankings) in Phase 6.
 
 ## Metrics
 
