@@ -1,4 +1,10 @@
-import type { RepoPublic, RepoSummary } from './types';
+import type {
+  CommitListItem,
+  PathMetrics,
+  RepoPublic,
+  RepoSummary,
+  TreeNode,
+} from './types';
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, init);
@@ -21,6 +27,21 @@ export interface SummaryResponse {
   summary: RepoSummary;
 }
 
+export interface TreeResponse {
+  repo: RepoPublic;
+  tree: TreeNode;
+}
+
+export interface MetricsResponse {
+  repo: RepoPublic;
+  metrics: PathMetrics;
+}
+
+export interface CommitsResponse {
+  total: number;
+  commits: CommitListItem[];
+}
+
 export const api = {
   listRepos: () => request<RepoPublic[]>('/repos'),
 
@@ -33,4 +54,18 @@ export const api = {
   deleteRepo: (id: string) => request<void>(`/repos/${id}`, { method: 'DELETE' }),
 
   getSummary: (id: string) => request<SummaryResponse>(`/repos/${id}/summary`),
+
+  getTree: (id: string) => request<TreeResponse>(`/repos/${id}/tree`),
+
+  getMetrics: (id: string, path: string) =>
+    request<MetricsResponse>(`/repos/${id}/metrics?path=${encodeURIComponent(path)}`),
+
+  getCommits: (id: string, params: { path?: string; limit?: number; offset?: number } = {}) => {
+    const qs = new URLSearchParams();
+    if (params.path) qs.set('path', params.path);
+    if (params.limit !== undefined) qs.set('limit', String(params.limit));
+    if (params.offset !== undefined) qs.set('offset', String(params.offset));
+    const suffix = qs.toString() ? `?${qs.toString()}` : '';
+    return request<CommitsResponse>(`/repos/${id}/commits${suffix}`);
+  },
 };

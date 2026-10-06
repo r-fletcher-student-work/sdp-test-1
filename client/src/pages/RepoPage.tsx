@@ -1,17 +1,31 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { ErrorBanner } from '../components/ErrorBanner';
+import { FileTreeBrowser } from '../components/FileTreeBrowser';
 import { MetricsChart } from '../components/MetricsChart';
+import { PathMetricsView } from '../components/PathMetricsView';
 import { StatCards } from '../components/StatCards';
 
 export function RepoPage() {
   const { id = '' } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedPath = searchParams.get('path') ?? '';
+
   const summaryQuery = useQuery({
     queryKey: ['summary', id],
     queryFn: () => api.getSummary(id),
     retry: 1,
   });
+  const treeQuery = useQuery({
+    queryKey: ['tree', id],
+    queryFn: () => api.getTree(id),
+    retry: 1,
+  });
+
+  const selectPath = (path: string) => {
+    setSearchParams(path === '' ? {} : { path });
+  };
 
   return (
     <div className="space-y-6">
@@ -40,21 +54,55 @@ export function RepoPage() {
         />
       )}
 
-      {summaryQuery.data && (
-        <>
-          <StatCards summary={summaryQuery.data.summary} />
-          <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold">Growth &amp; churn over time</h2>
-            <p className="text-sm text-slate-500">
-              Cumulative across all commits, oldest to newest. Very large histories are sampled
-              per point to keep the chart responsive — every value stays exact.
-            </p>
-            <div className="mt-4">
-              <MetricsChart data={summaryQuery.data.summary.timeseries} />
-            </div>
-          </section>
-        </>
-      )}
+      <div className="grid items-start gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+        <aside className="lg:sticky lg:top-6">
+          {treeQuery.isLoading && (
+            <div className="h-64 animate-pulse rounded-lg bg-slate-200" aria-hidden="true" />
+          )}
+          {treeQuery.isError && (
+            <ErrorBanner
+              message={(treeQuery.error as Error).message}
+              onRetry={() => treeQuery.refetch()}
+            />
+          )}
+          {treeQuery.data && (
+            <FileTreeBrowser
+              node={treeQuery.data.tree}
+              selectedPath={selectedPath}
+              onSelect={selectPath}
+            />
+          )}
+        </aside>
+
+        <section className="min-w-0 space-y-6">
+          {selectedPath === '' ? (
+            summaryQuery.data && (
+              <>
+                <StatCards summary={summaryQuery.data.summary} />
+                <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+                  <h2 className="text-lg font-semibold">Growth &amp; churn over time</h2>
+                  <p className="text-sm text-slate-500">
+                    Cumulative across all commits, oldest to newest. Very large histories are
+                    sampled per point to keep the chart responsive — every value stays exact.
+                  </p>
+                  <div className="mt-4">
+                    <MetricsChart data={summaryQuery.data.summary.timeseries} />
+                  </div>
+                </div>
+              </>
+            )
+          ) : (
+            summaryQuery.data && (
+              <PathMetricsView
+                repoId={id}
+                path={selectedPath}
+                repoName={summaryQuery.data.repo.name}
+                onSelectPath={selectPath}
+              />
+            )
+          )}
+        </section>
+      </div>
     </div>
   );
 }
